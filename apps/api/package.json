@@ -1,0 +1,50 @@
+{
+  "name": "@forja/api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API do FORJA (Express + Drizzle + PostgreSQL/PGlite).",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "start": "node --env-file-if-exists=.env dist/server.js",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "catalogue:build": "tsx src/scripts/build-catalogue.ts",
+    "openapi:export": "tsx src/scripts/export-openapi.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.12",
+    "@forja/shared": "*",
+    "@node-rs/argon2": "^2.2.2",
+    "cors": "^2.8.6",
+    "drizzle-orm": "^0.45.4",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "multer": "^2.5.0",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "sharp": "^0.35.5",
+    "ws": "^8.22.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "@types/ws": "^8.18.2",
+    "drizzle-kit": "^0.31.11",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}

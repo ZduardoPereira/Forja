@@ -1,0 +1,516 @@
+{
+  "source": {
+    "repository": "https://github.com/DuarteSantos8/openGym",
+    "commit": "50ab7f24e3c4ee70e7f26b3beb426f571e03414b",
+    "generatedAt": "2026-11-10T06:12:54.060Z",
+    "license": "Texto: AGPL-3.0 (openGym) e MIT (entradas de origem ExerciseDB v1). Mídias NÃO incluídas."
+  },
+  "plans": [
+    {
+      "key": "ppl",
+      "name": "Push / Pull / Legs",
+      "description": "Três treinos: empurrar, puxar e pernas. Clássico para hipertrofia.",
+      "routines": [
+        {
+          "key": "push",
+          "name": "Empurrar (peito, ombro, tríceps)",
+          "exercises": [
+            {
+              "exerciseId": "0025",
+              "sets": 4,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0047",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0426",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0334",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0241",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0251",
+              "sets": 3,
+              "reps": "10"
+            }
+          ]
+        },
+        {
+          "key": "pull",
+          "name": "Puxar (costas, bíceps)",
+          "exercises": [
+            {
+              "exerciseId": "2330",
+              "sets": 4,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0027",
+              "sets": 4,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "1323",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0031",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0313",
+              "sets": 3,
+              "reps": "12"
+            }
+          ]
+        },
+        {
+          "key": "legs",
+          "name": "Pernas",
+          "exercises": [
+            {
+              "exerciseId": "0043",
+              "sets": 4,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0085",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0739",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0585",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0586",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0605",
+              "sets": 4,
+              "reps": "15"
+            }
+          ]
+        }
+      ],
+      "schedule": [
+        {
+          "weekday": 1,
+          "routineKey": "push"
+        },
+        {
+          "weekday": 3,
+          "routineKey": "pull"
+        },
+        {
+          "weekday": 5,
+          "routineKey": "legs"
+        }
+      ]
+    },
+    {
+      "key": "upper-lower",
+      "name": "Superior / Inferior",
+      "description": "Quatro treinos alternando parte superior e inferior.",
+      "routines": [
+        {
+          "key": "upper-a",
+          "name": "Superior A",
+          "exercises": [
+            {
+              "exerciseId": "0025",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "2330",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0047",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "1323",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0334",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0241",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0031",
+              "sets": 2,
+              "reps": "12"
+            }
+          ]
+        },
+        {
+          "key": "lower-a",
+          "name": "Inferior A",
+          "exercises": [
+            {
+              "exerciseId": "0043",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0085",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0739",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0586",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0605",
+              "sets": 3,
+              "reps": "15"
+            }
+          ]
+        },
+        {
+          "key": "upper-b",
+          "name": "Superior B",
+          "exercises": [
+            {
+              "exerciseId": "0047",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0027",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0426",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "2330",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0334",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0241",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0313",
+              "sets": 2,
+              "reps": "12"
+            }
+          ]
+        },
+        {
+          "key": "lower-b",
+          "name": "Inferior B",
+          "exercises": [
+            {
+              "exerciseId": "0739",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0085",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0585",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0586",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0605",
+              "sets": 3,
+              "reps": "15"
+            }
+          ]
+        }
+      ],
+      "schedule": [
+        {
+          "weekday": 1,
+          "routineKey": "upper-a"
+        },
+        {
+          "weekday": 2,
+          "routineKey": "lower-a"
+        },
+        {
+          "weekday": 4,
+          "routineKey": "upper-b"
+        },
+        {
+          "weekday": 5,
+          "routineKey": "lower-b"
+        }
+      ]
+    },
+    {
+      "key": "full-body",
+      "name": "Corpo inteiro",
+      "description": "Três treinos de corpo inteiro por semana.",
+      "routines": [
+        {
+          "key": "fb-a",
+          "name": "Corpo inteiro A",
+          "exercises": [
+            {
+              "exerciseId": "0043",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0025",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "2330",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0586",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0334",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0031",
+              "sets": 2,
+              "reps": "12"
+            }
+          ]
+        },
+        {
+          "key": "fb-b",
+          "name": "Corpo inteiro B",
+          "exercises": [
+            {
+              "exerciseId": "0085",
+              "sets": 3,
+              "reps": "8"
+            },
+            {
+              "exerciseId": "0047",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "1323",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0585",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0334",
+              "sets": 2,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0241",
+              "sets": 2,
+              "reps": "12"
+            }
+          ]
+        },
+        {
+          "key": "fb-c",
+          "name": "Corpo inteiro C",
+          "exercises": [
+            {
+              "exerciseId": "0739",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0025",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0027",
+              "sets": 3,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0426",
+              "sets": 2,
+              "reps": "10"
+            },
+            {
+              "exerciseId": "0586",
+              "sets": 3,
+              "reps": "12"
+            },
+            {
+              "exerciseId": "0605",
+              "sets": 3,
+              "reps": "15"
+            }
+          ]
+        }
+      ],
+      "schedule": [
+        {
+          "weekday": 1,
+          "routineKey": "fb-a"
+        },
+        {
+          "weekday": 3,
+          "routineKey": "fb-b"
+        },
+        {
+          "weekday": 5,
+          "routineKey": "fb-c"
+        }
+      ]
+    },
+    {
+      "key": "5x5",
+      "name": "5×5",
+      "description": "Força nos básicos: 5 séries de 5 repetições.",
+      "routines": [
+        {
+          "key": "5x5-a",
+          "name": "5×5 A",
+          "exercises": [
+            {
+              "exerciseId": "0043",
+              "sets": 5,
+              "reps": "5"
+            },
+            {
+              "exerciseId": "0025",
+              "sets": 5,
+              "reps": "5"
+            },
+            {
+              "exerciseId": "0027",
+              "sets": 5,
+              "reps": "5"
+            }
+          ]
+        },
+        {
+          "key": "5x5-b",
+          "name": "5×5 B",
+          "exercises": [
+            {
+              "exerciseId": "0085",
+              "sets": 5,
+              "reps": "5"
+            },
+            {
+              "exerciseId": "0426",
+              "sets": 5,
+              "reps": "5"
+            },
+            {
+              "exerciseId": "2330",
+              "sets": 5,
+              "reps": "5"
+            }
+          ]
+        },
+        {
+          "key": "5x5-c",
+          "name": "5×5 C",
+          "exercises": [
+            {
+              "exerciseId": "0739",
+              "sets": 5,
+              "reps": "5"
+            },
+            {
+              "exerciseId": "0047",
+              "sets": 5,
+              "reps": "5"
+            },
+            {
+              "exerciseId": "1323",
+              "sets": 5,
+              "reps": "5"
+            }
+          ]
+        }
+      ],
+      "schedule": [
+        {
+          "weekday": 1,
+          "routineKey": "5x5-a"
+        },
+        {
+          "weekday": 3,
+          "routineKey": "5x5-b"
+        },
+        {
+          "weekday": 5,
+          "routineKey": "5x5-c"
+        }
+      ]
+    }
+  ]
+}

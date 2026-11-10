@@ -1,0 +1,12 @@
+**/node_modules
+**/.expo
+**/dist
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.legacy
+apps/api/.data
+apps/api/.cache
+coverage

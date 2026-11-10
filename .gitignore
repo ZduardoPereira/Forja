@@ -1,0 +1,29 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# Expo
+.expo/
+apps/app/android/
+apps/app/ios/
+
+# Dados locais da API (banco embutido, fotos) e cache do catálogo openGym
+apps/api/.data/
+apps/api/.cache/
+
+# Cópia de segurança da versão anterior (fica só no seu PC)
+.legacy/
+
+# Publicação: endereço do servidor e backups baixados (ficam só no seu PC)
+deploy.local.json
+backups/
+
+# APK gerado por "npm run apk" e a chave de assinatura dele (guarde a pasta credentials/ fora do git!)
+apk/
+credentials/

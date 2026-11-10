@@ -1,0 +1,5 @@
+# Arquivos que rodam no Linux (servidor e Docker) precisam de final de linha LF, mesmo no Windows.
+*.sh       text eol=lf
+Dockerfile text eol=lf
+Caddyfile  text eol=lf
+*.yml      text eol=lf

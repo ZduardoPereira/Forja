@@ -1,0 +1,6 @@
+# HTTPS automático (Let's Encrypt) para o domínio definido em DOMAIN no .env.
+# O Caddy também repassa o WebSocket do chat (/ws) sem configuração extra.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy forja:3333
+}

@@ -1,0 +1,47 @@
+{
+  "name": "forja",
+  "private": true,
+  "version": "2.0.0",
+  "description": "FORJA — app privado de treinos, evolução e competição entre amigos (PC + Android).",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev -w @forja/api",
+    "app": "npm run start -w @forja/app",
+    "web": "npm run web -w @forja/app",
+    "build": "npm run build:web -w @forja/app && npm run build -w @forja/api",
+    "start": "npm run start -w @forja/api",
+    "deploy": "node tools/deploy/forja-server.mjs deploy",
+    "server:setup": "node tools/deploy/forja-server.mjs setup",
+    "server:status": "node tools/deploy/forja-server.mjs status",
+    "server:logs": "node tools/deploy/forja-server.mjs logs",
+    "server:backup": "node tools/deploy/forja-server.mjs backup",
+    "server:rollback": "node tools/deploy/forja-server.mjs rollback",
+    "server:ssh": "node tools/deploy/forja-server.mjs ssh",
+    "pc:install": "node tools/host/forja-pc.mjs install",
+    "pc:autostart": "node tools/host/forja-pc.mjs autostart",
+    "pc:autostart:off": "node tools/host/forja-pc.mjs autostart --off",
+    "pc:tunnel": "node tools/host/forja-pc.mjs tunnel",
+    "pc:status": "node tools/host/forja-pc.mjs status",
+    "pc:logs": "node tools/host/forja-pc.mjs logs",
+    "pc:backup": "node tools/host/forja-pc.mjs backup",
+    "pc:restart": "node tools/host/forja-pc.mjs restart",
+    "pc:stop": "node tools/host/forja-pc.mjs stop",
+    "pc:start": "node tools/host/forja-pc.mjs start",
+    "pc:uninstall": "node tools/host/forja-pc.mjs uninstall",
+    "apk": "node tools/android/build-apk.mjs build",
+    "apk:setup": "node tools/android/build-apk.mjs setup",
+    "catalogue:build": "npm run catalogue:build -w @forja/api",
+    "assets:build": "node tools/assets/build-assets.mjs",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

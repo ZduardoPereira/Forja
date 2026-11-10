@@ -1,0 +1,62 @@
+# FORJA em produção para o grupo: app + banco PostgreSQL + HTTPS automático (Caddy).
+#
+#   1) cp .env.example .env      e preencha DOMAIN, SECRET, INVITE_CODE e POSTGRES_PASSWORD
+#   2) docker compose up -d --build
+#   3) abra https://SEU-DOMINIO  (a primeira conta criada vira administradora)
+#
+# Passo a passo completo (VPS, domínio grátis, backup, atualização): docs/HOSPEDAGEM.md
+# Publicando do PC com "npm run deploy", este arquivo vai para /opt/forja/app no servidor.
+name: forja
+
+services:
+  forja:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PUBLIC_URL: https://${DOMAIN:?defina DOMAIN no .env}
+      DATABASE_URL: postgres://forja:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/forja
+      TRUST_PROXY: 'true'
+    volumes:
+      - forja-data:/data # fotos (e o banco embutido, se DATABASE_URL ficar vazio)
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forja
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: forja
+    volumes:
+      - forja-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U forja -d forja']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - forja
+
+volumes:
+  forja-data:
+  forja-pg:
+  caddy-data:
+  caddy-config:
