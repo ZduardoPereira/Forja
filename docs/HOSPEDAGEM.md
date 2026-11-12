@@ -148,11 +148,20 @@ Para não perguntar mais, rode `npm run pc:autostart:off` ou desative "FORJA Ser
 | `npm run pc:restart` | reinicia (use depois de editar `%USERPROFILE%\FORJA\forja.env`) |
 | `npm run pc:stop` / `npm run pc:start` | desliga / liga (o mesmo que o ícone e o menu Iniciar) |
 | `npm run pc:autostart` / `pc:autostart:off` | volta a perguntar ao entrar no Windows / para de perguntar |
-| `npm run pc:install` | **atualiza** para a versão atual do código (os dados ficam) |
+| `npm run pc:install` | **atualiza** para a versão atual do código (faz backup antes; os dados ficam) |
 | `npm run apk` | gera o APK de novo (veja "No Android") |
+| `npm run atualizar` | os dois acima de uma vez |
 | `npm run pc:uninstall` | desliga e tira da inicialização e do menu Iniciar (dados e backups ficam) |
 
 Se o servidor cair, o supervisor liga de novo sozinho em segundos.
+
+### Atualizar o app para todo mundo
+1. Mudou o código: no PC do servidor, rode **`npm run pc:install`**. Ele compila, faz um backup, troca a versão e liga de novo (uns 10 segundos fora do ar). Mudanças no banco (tabelas novas) são aplicadas sozinhas quando o servidor liga.
+2. Quem usa **pelo navegador** ou pelo app **instalado pelo navegador** (Android, PC e iPhone) já recebe a versão nova ao abrir ou recarregar.
+3. Quem usa o **APK**: rode **`npm run apk`**. O APK novo vai para `https://<endereço>/forja.apk` e, a partir da versão 2.1, o app mostra **"Versão nova do app disponível"** no Início. É só tocar, baixar e instalar por cima: login e dados ficam.
+4. Mudou só o servidor (regras, rankings, avisos)? Basta o passo 1: o APK conversa com o servidor e já usa as regras novas.
+
+Se algo der errado depois de atualizar, a versão anterior fica em `%USERPROFILE%\FORJA\app.prev` e o backup do passo 1 em `OneDrive\FORJA-backups`.
 
 **Backup:** todo dia às 4h, e também ao ligar se o último tiver mais de 20 h. Os backups vão para `OneDrive\FORJA-backups`, ganhando uma cópia na nuvem, e ficam os últimos 14.
 
@@ -196,6 +205,26 @@ A chave que assina o APK fica em `credentials\android\` (fora do git; está no O
 Sem Windows, dá para gerar na nuvem da Expo: crie uma conta em <https://expo.dev>, ajuste `EXPO_PUBLIC_API_URL` em `apps/app/eas.json` e rode `npx eas-cli build -p android --profile preview` dentro de `apps/app`.
 
 > O APK precisa de um endereço **HTTPS** (o Android bloqueia HTTP comum em apps instalados). Durante o desenvolvimento, use o **Expo Go**: `npm run app` e leia o QR code, com `apps/app/.env` apontando para o IP do seu PC (`EXPO_PUBLIC_API_URL=http://192.168.x.x:3333`).
+
+## No iPhone
+Arquivo de instalação de iPhone (IPA) não dá para gerar aqui: a Apple exige um Mac (ou a nuvem da Expo) **e** uma conta de desenvolvedor paga (US$ 99/ano) para o app abrir no celular de outra pessoa, e mesmo assim cada iPhone precisa ser cadastrado ou passar pelo TestFlight. Sem conta paga, apps instalados por fora (AltStore, Sideloadly) param de abrir a cada 7 dias.
+
+O caminho que funciona de graça e fica igual a um app:
+1. No iPhone, abra o endereço do FORJA no **Safari**.
+2. Toque em **Compartilhar** (□↑) → **"Adicionar à Tela de Início"**.
+3. Abra o FORJA pelo ícone novo: tela cheia, sem barra do navegador, e atualiza sozinho a cada `npm run pc:install`.
+4. Para receber notificações com o app fechado (iOS 16.4 ou mais novo): no FORJA aberto pelo ícone, vá em **Notificações → Ativar notificações**.
+
+Se um dia quiserem o app "de verdade" no iPhone: com a conta de desenvolvedor da Apple, `npx eas-cli build -p ios` (na nuvem da Expo) gera o app e o TestFlight distribui para o grupo.
+
+## Notificações em cada aparelho
+| Onde | Com o app aberto | Com o app fechado |
+|---|---|---|
+| PC (Chrome/Edge) e Android pelo Chrome | sininho + aviso no topo | sim, depois de "Ativar notificações" |
+| iPhone (Safari, adicionado à Tela de Início) | sininho + aviso no topo | sim (iOS 16.4+), depois de "Ativar notificações" |
+| APK do Android | sininho + aviso no topo | não (precisaria do Firebase do Google; dá para configurar depois) |
+
+Cada pessoa escolhe em **Notificações** o que chega no aparelho: treinos marcados, chat, 1º lugar nos rankings, lembrete da sequência e novidades do grupo. As chaves do Web Push (VAPID) são geradas pelo servidor na primeira vez e ficam no banco; não precisa de conta em serviço nenhum.
 
 ## Segurança — checklist
 - [ ] `SECRET` longo e aleatório; `.env` nunca vai para o git (no caminho A ele só existe no servidor).

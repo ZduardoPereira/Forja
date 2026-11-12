@@ -165,7 +165,7 @@ export interface DietPlan {
   fatG: number | null;
   notes: string | null;
   active: boolean;
-  meals: { name: string; time?: string | null; items: string; notes?: string | null }[];
+  meals: DietMeal[];
   attachments: { id: string; file: FileRef }[];
 }
 
@@ -284,6 +284,9 @@ export interface Home {
   competition: { id: string; name: string; daysLeft: number; myRank: number | null; myTotal: number | null; participants: number; leader: { user: Member; total: number } | null } | null;
   weight: { date: string; weightKg: number; weekChange: number | null } | null;
   unread: number;
+  streak: StreakInfo;
+  unreadNotifications: number;
+  apk: { versionCode: number; versionName: string; url: string } | null;
 }
 
 export interface StravaSummary {
@@ -294,4 +297,127 @@ export interface StravaSummary {
   recent: { date: string; name: string | null; distanceKm: number; movingTimeSec: number; paceSecPerKm: number }[];
   fetchedAt: string;
   cached: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Sequência, rankings, notificações, assistente de treino e administração
+// ---------------------------------------------------------------------------
+
+export interface StreakInfo {
+  current: number;
+  best: number;
+  doneToday: boolean;
+  lastDate: string | null;
+}
+
+export interface ActivityGroup {
+  today: string;
+  me: StreakInfo;
+  doneToday: number;
+  members: { user: Member; streak: StreakInfo; todayKinds: ActivityKind[] }[];
+}
+
+export interface ActivityCalendar {
+  today: string;
+  streak: StreakInfo;
+  days: { date: string; kinds: ActivityKind[] }[];
+}
+
+export type RankingBoardId = 'streak' | 'physical' | 'evolution';
+export interface RankingEntry {
+  rank: number;
+  user: Member;
+  value: number;
+  qualifies: boolean;
+  detail: string;
+  extra: Record<string, unknown>;
+}
+export interface Rankings {
+  today: string;
+  boards: Record<RankingBoardId, RankingEntry[]>;
+  leaders: Record<RankingBoardId, string | null>;
+  mine: Record<RankingBoardId, number | null>;
+}
+
+export interface AppNotification {
+  id: string;
+  category: 'events' | 'chat' | 'ranking' | 'streak' | 'group';
+  kind: string;
+  title: string;
+  body: string;
+  url: string | null;
+  createdAt: string;
+  readAt: string | null;
+  actor: { id: string; name: string; avatar: FileRef | null } | null;
+}
+
+export interface LogItem {
+  id: string;
+  date: string;
+  kind: ActivityKind;
+  durationMin: number | null;
+  routineId: string | null;
+  notes: string | null;
+  source: 'manual' | 'session' | 'admin';
+  title: string | null;
+  startedAt: string | null;
+  summary: { sets: number; exercises: number; volumeKg: number } | null;
+}
+
+export interface SessionSetView {
+  weightKg: number | null;
+  reps: number | null;
+  durationSec: number | null;
+  restSec?: number | null;
+}
+
+export interface SessionDetail extends Omit<LogItem, 'summary'> {
+  exercises: { exerciseId: string; name: string; sets: SessionSetView[] }[];
+  summary: { sets: number; reps: number; volumeKg: number };
+}
+
+export interface ExercisePrevious {
+  exerciseId: string;
+  last: { date: string; sets: SessionSetView[] } | null;
+  best: { weightKg: number | null; reps: number | null; e1rm: number } | null;
+}
+
+export interface SessionResult {
+  log: LogItem;
+  summary: { durationMin: number; exercises: number; sets: number; reps: number; volumeKg: number; records: { exerciseId: string; name: string; weightKg: number | null; reps: number | null; e1rm: number }[] };
+  streak: StreakInfo;
+}
+
+export interface AdminOverview {
+  version: string;
+  node: string;
+  uptimeSec: number;
+  now: string;
+  today: string;
+  timezone: string;
+  publicUrl: string;
+  counts: Record<'members' | 'activities' | 'sessions' | 'tests' | 'weighIns' | 'events' | 'chatMessages' | 'photos' | 'notifications' | 'pushDevices', number>;
+  storage: { dbBytes: number; uploadsBytes: number };
+  backup: { name: string; sizeBytes: number; at: string } | null;
+  leaders: Record<RankingBoardId, string | null>;
+}
+
+export interface DietFood {
+  name: string;
+  foodId?: string | null;
+  grams?: number | null;
+  amount?: string | null;
+  kcal?: number | null;
+  proteinG?: number | null;
+  carbsG?: number | null;
+  fatG?: number | null;
+}
+
+export interface DietMeal {
+  name: string;
+  time?: string | null;
+  /** Texto livre (planos antigos ou o que o nutricionista escreveu). */
+  items: string;
+  foods?: DietFood[];
+  notes?: string | null;
 }

@@ -1,0 +1,87 @@
+# Gera o app de iPhone (FORJA.ipa) SEM assinatura num Mac do GitHub (grátis em repositório público).
+#
+# O iPhone só abre app assinado. Para instalar: Sideloadly (ou AltStore) no PC, com a conta Apple
+# da própria pessoa. Com conta Apple grátis, o app vale 7 dias e precisa ser reinstalado/renovado.
+# Com a conta de desenvolvedor paga (US$ 99/ano), dá para trocar isto por TestFlight.
+#
+# O endereço do servidor que vai dentro do app vem da variável do repositório FORJA_API_URL
+# (Settings → Secrets and variables → Actions → Variables). Sem ela, o app pergunta na tela de entrada.
+# Baixar o resultado: aba Actions → execução → "FORJA-ios" (ou: gh run download -n FORJA-ios).
+name: iPhone (IPA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, v2.1]
+    paths:
+      - 'apps/app/**'
+      - 'packages/shared/**'
+      - 'package-lock.json'
+      - '.github/workflows/ios-ipa.yml'
+
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    name: Gerar FORJA.ipa
+    runs-on: macos-26
+    timeout-minutes: 120
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_API_URL: ${{ vars.FORJA_API_URL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Gerar o projeto iOS (expo prebuild + CocoaPods)
+        working-directory: apps/app
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Compilar (Release, sem assinatura)
+        working-directory: apps/app/ios
+        run: |
+          WS=$(ls -d *.xcworkspace | head -1)
+          SCHEME="${WS%.xcworkspace}"
+          echo "Workspace: $WS · esquema: $SCHEME · $(xcodebuild -version | head -1)"
+          xcodebuild -quiet \
+            -workspace "$WS" -scheme "$SCHEME" -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/FORJA.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive
+
+      - name: Montar o .ipa
+        run: |
+          APP=$(ls -d "$RUNNER_TEMP/FORJA.xcarchive/Products/Applications/"*.app | head -1)
+          if [ -n "$EXPO_PUBLIC_API_URL" ]; then
+            grep -aq "$EXPO_PUBLIC_API_URL" "$APP/main.jsbundle" && echo "Endereço do servidor dentro do app: ok" || { echo "O endereço não entrou no app"; exit 1; }
+          fi
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry FORJA.ipa Payload)
+          ls -lh "$RUNNER_TEMP/ipa/FORJA.ipa"
+          {
+            echo "## FORJA.ipa pronto"
+            echo "Baixe em **Artifacts → FORJA-ios** (vale 30 dias)."
+            echo "Instale com o Sideloadly ou AltStore usando a sua conta Apple: com conta grátis, renove a cada 7 dias."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: FORJA-ios
+          path: ${{ runner.temp }}/ipa/FORJA.ipa
+          retention-days: 30
+          if-no-files-found: error

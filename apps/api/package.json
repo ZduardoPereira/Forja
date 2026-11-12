@@ -1,6 +1,6 @@
 {
   "name": "@forja/api",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "description": "API do FORJA (Express + Drizzle + PostgreSQL/PGlite).",
@@ -28,6 +28,7 @@
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
     "sharp": "^0.35.5",
+    "web-push": "^4.0.0",
     "ws": "^8.22.2",
     "zod": "^4.6.7"
   },
@@ -38,6 +39,7 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.2",
     "drizzle-kit": "^0.31.11",
     "pino-pretty": "^13.2.0",

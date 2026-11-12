@@ -2,6 +2,10 @@ import type { TestDef, TestId } from '@forja/shared';
 import { QueryClient, useQuery } from '@tanstack/react-query';
 import { ApiError, get } from './api';
 import type {
+  ActivityCalendar,
+  ActivityGroup,
+  AdminOverview,
+  AppNotification,
   BodySummary,
   ChatRoom,
   CompetitionBoard,
@@ -11,10 +15,15 @@ import type {
   ExerciseDetail,
   ExerciseItem,
   Home,
+  ExercisePrevious,
   LeaderboardEntry,
+  LogItem,
   Member,
   RadarAxisView,
+  Rankings,
   Routine,
+  SessionDetail,
+  StreakInfo,
   StravaSummary,
   TestOverview,
   TestResultView,
@@ -84,10 +93,39 @@ export const useStravaSummary = (enabled: boolean) =>
   useQuery({ queryKey: ['strava-summary'], queryFn: () => get<StravaSummary>('/strava/summary'), enabled, staleTime: 600_000, retry: false });
 
 /** Chaves que mudam quando um resultado de teste é salvo. */
-export const TEST_KEYS = [['tests'], ['test-bests'], ['test-history'], ['leaderboard'], ['powerlifting'], ['radar'], ['competition'], ['home']];
+export const TEST_KEYS = [['tests'], ['test-bests'], ['test-history'], ['leaderboard'], ['powerlifting'], ['radar'], ['competition'], ['home'], ['rankings']];
 /** Chaves que mudam quando o corpo (peso/avaliação) muda. */
-export const BODY_KEYS = [['body'], ['competition'], ['home'], ['radar'], ['tests']];
+export const BODY_KEYS = [['body'], ['competition'], ['home'], ['radar'], ['tests'], ['rankings']];
 
 export function invalidate(keys: string[][]) {
   return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 }
+
+// ---- Sequência, rankings, notificações, assistente de treino e administração ----
+export const useActivityGroup = () => useQuery({ queryKey: ['activity-group'], queryFn: () => get<ActivityGroup>('/activity/group') });
+export const useActivityCalendar = (userId?: string) =>
+  useQuery({ queryKey: ['activity-calendar', userId ?? 'me'], queryFn: () => get<ActivityCalendar>('/activity/calendar', { userId }) });
+export const useRankings = () => useQuery({ queryKey: ['rankings'], queryFn: () => get<Rankings>('/rankings') });
+export const useNotifications = () => useQuery({ queryKey: ['notifications'], queryFn: () => get<AppNotification[]>('/notifications', { limit: 60 }) });
+export const useUnreadNotifications = () => useQuery({ queryKey: ['notifications-unread'], queryFn: () => get<{ count: number }>('/notifications/unread'), staleTime: 15_000 });
+export const useNotifyPrefs = () =>
+  useQuery({ queryKey: ['notify-prefs'], queryFn: () => get<{ prefs: Record<AppNotification['category'], boolean>; publicKey: string; devices: number }>('/notifications/prefs') });
+export const useHistory = () => useQuery({ queryKey: ['logs'], queryFn: () => get<LogItem[]>('/logs', { limit: 100 }) });
+export const useSession = (id: string | undefined) => useQuery({ queryKey: ['session', id], queryFn: () => get<SessionDetail>(`/sessions/${id}`), enabled: !!id });
+export const useExercisePrevious = (ids: string[]) =>
+  useQuery({
+    queryKey: ['exercise-previous', [...ids].sort().join(',')],
+    queryFn: () => get<ExercisePrevious[]>('/sessions/previous', { exerciseIds: ids.join(',') }),
+    enabled: ids.length > 0,
+    staleTime: 300_000,
+  });
+export const useAdminOverview = (enabled: boolean) => useQuery({ queryKey: ['admin-overview'], queryFn: () => get<AdminOverview>('/admin/overview'), enabled });
+export const useAdminActivity = (userId: string | null) =>
+  useQuery({
+    queryKey: ['admin-activity', userId],
+    queryFn: () => get<{ user: { id: string; name: string }; streak: StreakInfo; logs: { id: string; date: string; kind: string; source: string; title: string | null; durationMin: number | null; notes: string | null }[] }>(`/admin/members/${userId}/activity`),
+    enabled: !!userId,
+  });
+
+/** Chaves que mudam quando alguém registra (ou apaga) atividade. */
+export const ACTIVITY_KEYS = [['activity-group'], ['activity-calendar'], ['rankings'], ['home'], ['logs'], ['competition']];

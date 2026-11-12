@@ -3,10 +3,11 @@ import { and, desc, eq, gt, inArray, lt, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import * as s from '../db/schema';
 import type { Deps } from '../deps';
-import { notFound } from '../http/errors';
+import { forbidden, notFound } from '../http/errors';
 import type { Limiters } from '../http/rate-limit';
 import type { RouteRegistry } from '../http/registry';
 import { assertOwnFiles, fileView } from '../services/files';
+import { notify } from '../services/notify';
 
 type MessageRow = typeof s.chatMessages.$inferSelect;
 
@@ -115,9 +116,39 @@ export function chatRoutes(r: RouteRegistry, limiters: Limiters) {
     body: chatMessageSchema,
     middleware: [limiters.chat],
     handler: async ({ deps, user, params, body }) => {
-      await getRoom(deps, params.id);
+      const room = await getRoom(deps, params.id);
       if (body.fileId) await assertOwnFiles(deps.db, user.id, [body.fileId]);
-      return postMessage(deps, user.id, params.id, body.text, body.fileId ?? null);
+      const view = await postMessage(deps, user.id, params.id, body.text, body.fileId ?? null);
+      // Celular/PC de quem não está com a conversa aberta. Não entra no sininho (o chat tem o próprio "não lidas").
+      const preview = body.text ? (body.text.length > 120 ? `${body.text.slice(0, 117)}…` : body.text) : '📷 Foto';
+      await notify(deps, {
+        to: 'all',
+        except: user.id,
+        category: 'chat',
+        kind: 'chat.message',
+        title: room.kind === 'group' ? `💬 ${user.name} no grupo` : `💬 ${user.name} · ${room.title}`,
+        body: preview,
+        url: `/chat/${room.id}`,
+        store: false,
+        tag: `chat:${room.id}`,
+      });
+      return view;
+    },
+  });
+
+  r.add({
+    method: 'delete',
+    path: '/chat/messages/:id',
+    tag: 'Chat',
+    summary: 'Apagar mensagem (a própria; o administrador apaga qualquer uma)',
+    params: z.object({ id: z.uuid() }),
+    handler: async ({ deps, user, params }) => {
+      const [m] = await deps.db.select().from(s.chatMessages).where(eq(s.chatMessages.id, params.id));
+      if (!m) throw notFound('Mensagem');
+      if (m.userId !== user.id && !user.isAdmin) throw forbidden('Só dá para apagar as suas mensagens');
+      await deps.db.delete(s.chatMessages).where(eq(s.chatMessages.id, params.id));
+      deps.realtime.broadcast({ type: 'chat.deleted', roomId: m.roomId, messageId: m.id });
+      return undefined;
     },
   });
 

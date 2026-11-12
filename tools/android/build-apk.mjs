@@ -69,6 +69,9 @@ async function build() {
   const env = buildEnv(url);
   prebuild(env);
   const { versionCode, versionName } = prepareBuild();
+  // O app sabe a própria versão: o Início avisa quando o servidor tiver um APK mais novo.
+  env.EXPO_PUBLIC_APK_BUILD = String(versionCode);
+  fs.appendFileSync(path.join(APP_SRC, '.env'), `EXPO_PUBLIC_APK_BUILD=${versionCode}\n`);
 
   step('Compilando o APK (Gradle; a 1ª vez leva uns 15–25 min, as próximas bem menos)');
   const gradlew = path.join(ANDROID, 'gradlew.bat');
@@ -87,12 +90,15 @@ async function build() {
 
   const size = `${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB`;
   const minutes = Math.round((Date.now() - t0) / 60_000);
+  const info = path.join(OUT_DIR, 'FORJA.json');
+  fs.writeFileSync(info, `${JSON.stringify({ versionCode, versionName, builtAt: new Date().toISOString(), server: url }, null, 2)}\n`);
   console.log(`\n✔ APK pronto: ${out} (${size}, versão ${versionName} · ${versionCode}, ${minutes} min)`);
   console.log(`  Servidor dentro do app: ${url}`);
   const web = path.join(FORJA_HOME, 'app', 'web');
   if (fs.existsSync(web)) {
     fs.copyFileSync(out, path.join(web, 'forja.apk'));
-    console.log(`  Para baixar no celular: ${url}/forja.apk`);
+    fs.copyFileSync(info, path.join(web, 'forja-apk.json'));
+    console.log(`  Para baixar no celular: ${url}/forja.apk (quem tem o app recebe o aviso de versão nova no Início)`);
   }
 }
 

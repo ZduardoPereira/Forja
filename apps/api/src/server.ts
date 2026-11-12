@@ -4,6 +4,7 @@ import { bootstrap } from './bootstrap';
 import { userFromToken } from './http/auth';
 import { purgeStravaCache } from './modules/strava';
 import { attachRealtime } from './services/realtime';
+import { startScheduler } from './services/scheduler';
 
 const { deps, handle } = await bootstrap();
 const app = createApp(deps);
@@ -13,6 +14,8 @@ deps.realtime = realtime;
 
 // Política do Strava: nada de cache com mais de 7 dias.
 const purge = setInterval(() => void purgeStravaCache(deps).catch(() => undefined), 3_600_000);
+// Lembretes de treino, lembrete da sequência às 20h e tarefas da virada do dia.
+const stopScheduler = startScheduler(deps);
 
 server.listen(deps.config.PORT, deps.config.HOST, () => {
   deps.logger.info({ port: deps.config.PORT, url: deps.config.publicUrl }, 'FORJA no ar');
@@ -24,6 +27,7 @@ async function shutdown(signal: string) {
   closing = true;
   deps.logger.info({ signal }, 'Encerrando');
   clearInterval(purge);
+  stopScheduler();
   realtime.close();
   server.close();
   await handle.close();

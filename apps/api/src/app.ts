@@ -7,8 +7,10 @@ import { pinoHttp } from 'pino-http';
 import type { Deps } from './deps';
 import { errorHandler } from './http/errors';
 import { createLimiters } from './http/rate-limit';
+import { VERSION } from './version';
 import { RouteRegistry } from './http/registry';
 import { accountRoutes } from './modules/account';
+import { adminRoutes } from './modules/admin';
 import { bodyRoutes } from './modules/body';
 import { chatRoutes } from './modules/chat';
 import { competitionRoutes } from './modules/competitions';
@@ -16,11 +18,13 @@ import { dietRoutes } from './modules/diet';
 import { eventRoutes } from './modules/events';
 import { fileRoutes } from './modules/files';
 import { homeRoutes } from './modules/home';
+import { sessionRoutes } from './modules/sessions';
+import { socialRoutes } from './modules/social';
 import { stravaRoutes } from './modules/strava';
 import { testRoutes } from './modules/tests';
 import { trainingRoutes } from './modules/training';
 
-export const VERSION = '2.0.0';
+export { VERSION } from './version';
 
 export function buildRegistry(deps: Deps) {
   const limiters = createLimiters(deps);
@@ -31,11 +35,14 @@ export function buildRegistry(deps: Deps) {
   bodyRoutes(r);
   dietRoutes(r);
   trainingRoutes(r);
+  sessionRoutes(r);
   eventRoutes(r);
   testRoutes(r);
   stravaRoutes(r);
   chatRoutes(r, limiters);
   competitionRoutes(r);
+  socialRoutes(r);
+  adminRoutes(r);
   return { registry: r, limiters };
 }
 

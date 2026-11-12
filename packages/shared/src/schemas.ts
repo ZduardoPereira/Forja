@@ -83,7 +83,32 @@ export const photoSchema = z.object({
   visibility: z.enum(VISIBILITIES).default('private'),
 });
 
-export const dietMealSchema = z.object({ name: text(60).min(1), time: optionalText(10), items: text(2000).min(1), notes: optionalText(500) });
+/** Um alimento da refeição: da lista do app (foodId + gramas → macros) ou digitado à mão. */
+export const dietFoodSchema = z.object({
+  name: text(80).min(1, 'Dê um nome ao alimento'),
+  foodId: z.string().max(40).nullable().optional(),
+  /** Quantidade em gramas (ou ml) — usada para calcular os macros dos alimentos da lista. */
+  grams: optionalNum(0, 5000),
+  /** Como a pessoa escreveu a quantidade ("2 ovos", "1 concha"). */
+  amount: optionalText(40),
+  kcal: optionalNum(0, 10_000),
+  proteinG: optionalNum(0, 1000),
+  carbsG: optionalNum(0, 2000),
+  fatG: optionalNum(0, 1000),
+});
+export type DietFoodInput = z.infer<typeof dietFoodSchema>;
+
+export const dietMealSchema = z
+  .object({
+    name: text(60).min(1, 'Dê um nome à refeição'),
+    time: optionalText(10),
+    /** Texto livre (planos antigos e "o que o nutricionista escreveu"). */
+    items: text(2000).default(''),
+    foods: z.array(dietFoodSchema).max(40).default([]),
+    notes: optionalText(500),
+  })
+  .refine((m) => m.items.length > 0 || m.foods.length > 0, { message: 'Adicione pelo menos um alimento na refeição', path: ['foods'] });
+export type DietMealInput = z.infer<typeof dietMealSchema>;
 export const dietPlanSchema = z.object({
   title: text(80).min(1, 'Dê um nome ao plano'),
   professional: optionalText(80),
@@ -134,6 +159,41 @@ export const workoutLogSchema = z.object({
   routineId: id.nullable().optional(),
   notes: optionalText(500),
 });
+
+/** Uma série feita no assistente de treino. */
+export const sessionSetSchema = z.object({
+  weightKg: optionalNum(0, 1000),
+  reps: z.number().int().min(0).max(1000).nullable().optional(),
+  /** Para exercícios de tempo (prancha etc.). */
+  durationSec: z.number().int().min(0).max(36_000).nullable().optional(),
+  /** Descanso que veio depois desta série. */
+  restSec: z.number().int().min(0).max(1800).nullable().optional(),
+});
+export const sessionExerciseSchema = z.object({
+  exerciseId: z.string().min(1).max(32),
+  sets: z.array(sessionSetSchema).min(1).max(30),
+  notes: optionalText(200),
+});
+/** Treino feito no assistente (com as séries), salvo ao finalizar. Conta para a sequência. */
+export const sessionSchema = z
+  .object({
+    title: text(60).min(1, 'Dê um nome ao treino'),
+    routineId: id.nullable().optional(),
+    kind: z.enum(ACTIVITY_KINDS).default('strength'),
+    startedAt: z.iso.datetime({ offset: true }),
+    finishedAt: z.iso.datetime({ offset: true }),
+    notes: optionalText(500),
+    exercises: z.array(sessionExerciseSchema).max(40).default([]),
+  })
+  .refine((s) => Date.parse(s.finishedAt) >= Date.parse(s.startedAt), { message: 'O fim precisa ser depois do início', path: ['finishedAt'] })
+  .refine((s) => Date.parse(s.finishedAt) - Date.parse(s.startedAt) <= 12 * 3_600_000, { message: 'Treino longo demais (máx. 12 h)', path: ['finishedAt'] });
+export type SessionInput = z.infer<typeof sessionSchema>;
+
+export const announcementSchema = z.object({
+  title: text(80).min(1, 'Escreva um título'),
+  body: text(400).min(1, 'Escreva a mensagem'),
+});
+export const adminActivitySchema = z.object({ date: localDate, kind: z.enum(ACTIVITY_KINDS).default('other'), notes: optionalText(200) });
 
 export const testResultSchema = z.object({
   testId: z.enum(TEST_IDS),

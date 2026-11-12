@@ -225,8 +225,16 @@ export default function Settings() {
         />
       </Section>
 
+      <Section title="Notificações e ajuda">
+        <Card padded={false} style={{ paddingHorizontal: space.lg }}>
+          <ListItem title="Notificações" subtitle="Receber no celular/PC e escolher o que chega" onPress={() => router.push('/notificacoes')} />
+          <ListItem title="Tutorial para o baiano" subtitle="Tudo o que o FORJA faz, passo a passo" onPress={() => router.push('/tutorial')} />
+        </Card>
+      </Section>
+
       <Section title="Grupo e conexões">
         <Card padded={false} style={{ paddingHorizontal: space.lg }}>
+          {me.isAdmin ? <ListItem title="Administração" subtitle="Painel do servidor, avisos para o grupo, testar notificações e corrigir sequências" onPress={() => router.push('/admin')} /> : null}
           <ListItem title="Pessoas do grupo" subtitle={me.isAdmin ? 'Você é administrador: pode gerar senha temporária e remover pessoas' : 'Quem está no FORJA'} onPress={() => router.push('/members')} />
           <ListItem title="Strava" subtitle="Seus tempos de corrida (só você vê)" onPress={() => router.push('/strava')} />
         </Card>

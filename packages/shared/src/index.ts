@@ -5,4 +5,7 @@ export * from './tests';
 export * from './body';
 export * from './nutrition';
 export * from './competition';
+export * from './activity';
+export * from './notifications';
+export * from './foods';
 export * from './schemas';

@@ -80,6 +80,13 @@ async function install() {
   run('npm ci --omit=dev --workspace=@forja/api --no-audit --no-fund --loglevel=error', { cwd: next, shell: true });
   const launcher = buildLauncher();
 
+  // Atualização pode mudar o banco (migrações): guarda uma cópia dos dados antes.
+  if (await ask('status', 2000)) {
+    step('Backup antes de atualizar (o app fica alguns segundos fora do ar)');
+    const b = await ask('backup', 300_000);
+    console.log(b?.ok ? `Backup salvo: ${b.file}` : `Aviso: o backup não saiu (${b?.error ?? 'sem resposta'}). Seguindo com a atualização.`);
+  }
+
   step('Trocando para a nova versão');
   await stopSupervisor();
   rmrf(path.join(HOME, 'app.prev'));
@@ -326,8 +333,10 @@ function stageApp(dest) {
   for (const d of ['apps/api/dist', 'apps/api/drizzle', 'apps/api/data']) copy(d);
   copy('apps/app/dist', 'web');
   copy('tools/host/supervisor.mjs', 'supervisor.mjs');
-  // APK gerado por "npm run apk": fica para baixar em https://<endereço>/forja.apk
+  // APK gerado por "npm run apk": fica para baixar em https://<endereço>/forja.apk, e o forja-apk.json
+  // diz a versão dele (o app instalado mostra "versão nova disponível" quando ela for maior que a sua).
   if (fs.existsSync(path.join(ROOT, 'apk', 'FORJA.apk'))) copy('apk/FORJA.apk', 'web/forja.apk');
+  if (fs.existsSync(path.join(ROOT, 'apk', 'FORJA.json'))) copy('apk/FORJA.json', 'web/forja-apk.json');
   fs.writeFileSync(path.join(dest, 'RELEASE.txt'), `${releaseLabel()}\n`);
 }
 

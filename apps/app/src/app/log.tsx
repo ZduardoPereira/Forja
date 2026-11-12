@@ -7,7 +7,7 @@ import { DateField } from '@/components/forms';
 import { Button, Card, Chip, ChipGroup, Field, Row, Screen, Text } from '@/components/ui';
 import { post } from '@/lib/api';
 import { errorText, today } from '@/lib/format';
-import { invalidate, useRoutines } from '@/lib/queries';
+import { ACTIVITY_KEYS, invalidate, useRoutines } from '@/lib/queries';
 import { useTheme } from '@/theme/ThemeProvider';
 import { space } from '@/theme/tokens';
 
@@ -25,7 +25,7 @@ export default function LogWorkout() {
   const save = useMutation({
     mutationFn: (body: unknown) => post('/logs', body),
     onSuccess: async () => {
-      await invalidate([['logs'], ['competition'], ['home']]);
+      await invalidate(ACTIVITY_KEYS);
       router.back();
     },
     onError: (err) => setError(errorText(err)),
@@ -46,6 +46,9 @@ export default function LogWorkout() {
     <Screen>
       <Card>
         <DateField label="Quando" value={day} onChange={setDay} />
+        <Text variant="small" faint>
+          Dá para marcar hoje e até 2 dias para trás. Conta para a sua sequência.
+        </Text>
         <View style={{ gap: space.sm }}>
           <Text variant="small" muted>
             Tipo

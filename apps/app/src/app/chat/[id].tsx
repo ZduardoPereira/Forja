@@ -5,19 +5,23 @@ import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { pickAndUpload } from '@/components/forms';
+import { confirm, pickAndUpload } from '@/components/forms';
 import { Avatar, Button, ErrorBox, IconButton, Loading, Text } from '@/components/ui';
-import { absoluteUrl, get, post } from '@/lib/api';
+import { absoluteUrl, del, get, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { errorText, relativeDay, time } from '@/lib/format';
 import { invalidate, queryClient, useChatRooms } from '@/lib/queries';
-import { onChatMessage } from '@/lib/realtime';
+import { onChatDeleted, onChatMessage } from '@/lib/realtime';
 import type { ChatMessage, FileRef } from '@/lib/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { CONTENT_MAX, radius, space, type } from '@/theme/tokens';
 
 const PAGE = 40;
 type Pages = InfiniteData<ChatMessage[], string | undefined>;
+
+function dropMessage(roomId: string, messageId: string) {
+  queryClient.setQueryData<Pages>(['chat-messages', roomId], (old) => (old ? { ...old, pages: old.pages.map((p) => p.filter((x) => x.id !== messageId)) } : old));
+}
 
 function addMessage(roomId: string, m: ChatMessage) {
   queryClient.setQueryData<Pages>(['chat-messages', roomId], (old) => {
@@ -64,8 +68,10 @@ export default function ChatRoomScreen() {
       addMessage(id, m);
       markRead();
     });
+    const offDeleted = onChatDeleted((roomId, messageId) => roomId === id && dropMessage(id, messageId));
     return () => {
       off();
+      offDeleted();
       if (readTimer.current) clearTimeout(readTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,6 +104,19 @@ export default function ChatRoomScreen() {
 
   const canSend = (text.trim().length > 0 || !!image) && !send.isPending && !uploading;
 
+  // Toque longo: apagar a própria mensagem (o administrador apaga qualquer uma).
+  const askDelete = async (m: ChatMessage) => {
+    if (m.userId !== me?.id && !me?.isAdmin) return;
+    const mine = m.userId === me?.id;
+    if (!(await confirm('Apagar mensagem?', mine ? 'Ela some para todo mundo.' : 'Você é administrador: a mensagem some para todo mundo.', 'Apagar'))) return;
+    try {
+      await del(`/chat/messages/${m.id}`);
+      dropMessage(id, m.id);
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
+
   return (
     <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: c.bg }}>
       <Stack.Screen
@@ -106,7 +125,7 @@ export default function ChatRoomScreen() {
           headerRight: room?.eventId ? () => <Button title="Ver treino" kind="ghost" small onPress={() => router.push(`/events/${room.eventId}`)} /> : undefined,
         }}
       />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'} keyboardVerticalOffset={Platform.OS === 'web' ? 0 : headerHeight}>
         <View style={{ flex: 1, width: '100%', maxWidth: CONTENT_MAX, alignSelf: 'center' }}>
           {messages.isLoading ? (
             <Loading />
@@ -142,7 +161,7 @@ export default function ChatRoomScreen() {
                     ) : null}
                     <View style={{ flexDirection: 'row', justifyContent: mine ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: space.sm, marginTop: firstOfGroup ? space.sm : 0 }}>
                       {!mine ? <View style={{ width: 28 }}>{lastOfGroup ? <Avatar name={item.author?.name ?? '?'} file={item.author?.avatar} size={28} /> : null}</View> : null}
-                      <View style={{ maxWidth: '78%', gap: 2 }}>
+                      <Pressable onLongPress={() => void askDelete(item)} delayLongPress={450} style={{ maxWidth: '78%', gap: 2 }} accessibilityHint={item.userId === me?.id || me?.isAdmin ? 'Toque longo para apagar' : undefined}>
                         {!mine && firstOfGroup ? (
                           <Text variant="small" muted style={{ marginLeft: 4 }}>
                             {item.author?.name}
@@ -174,7 +193,7 @@ export default function ChatRoomScreen() {
                             {time(item.createdAt)}
                           </Text>
                         ) : null}
-                      </View>
+                      </Pressable>
                     </View>
                   </View>
                 );

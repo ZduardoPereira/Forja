@@ -1,18 +1,48 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Tabs, type BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Avatar, Icon, type IconName, Text, useWide } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { useChatRooms } from '@/lib/queries';
+import { useChatRooms, useUnreadNotifications } from '@/lib/queries';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font, radius, space } from '@/theme/tokens';
 
-const ICONS: Record<string, IconName> = { index: 'home', treinos: 'calendar', ranking: 'award', chat: 'message-circle', perfil: 'user' };
+const ICONS: Record<string, IconName> = { index: 'home', treinar: 'activity', dieta: 'coffee', ranking: 'award', perfil: 'user' };
+
+function SideItem({ icon, label, badge, active, onPress }: { icon: IconName; label: string; badge?: number; active?: boolean; onPress: () => void }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      role="link"
+      accessibilityLabel={badge ? `${label}, ${badge} não lidas` : label}
+      onPress={onPress}
+      style={({ hovered }: { pressed: boolean; hovered?: boolean }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.md,
+        paddingHorizontal: space.md,
+        minHeight: 42,
+        borderRadius: radius.md,
+        backgroundColor: active ? c.surfaceAlt : hovered ? c.surface : 'transparent',
+      })}
+    >
+      <Icon name={icon} color={active ? c.text : c.textMuted} size={18} />
+      <Text variant="bodyStrong" color={active ? c.text : c.textMuted} style={{ flex: 1 }}>
+        {label}
+      </Text>
+      {badge ? <Badge n={badge} /> : null}
+    </Pressable>
+  );
+}
 
 function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { c } = useTheme();
   const wide = useWide();
   const { me } = useAuth();
+  const pathname = usePathname();
+  const rooms = useChatRooms();
+  const unreadChat = (rooms.data ?? []).reduce((a, r) => a + r.unread, 0);
+  const unreadNotifications = useUnreadNotifications().data?.count ?? 0;
 
   const items = state.routes.map((route, index) => {
     const focused = index === state.index;
@@ -32,7 +62,7 @@ function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTa
         <Text variant="title" style={{ paddingHorizontal: space.md, letterSpacing: 2, fontFamily: font.bold }}>
           FORJA
         </Text>
-        <View role="tablist" style={{ gap: 2, flex: 1 }}>
+        <View role="tablist" style={{ gap: 2 }}>
           {items.map((it) => (
             <Pressable
               key={it.key}
@@ -40,7 +70,7 @@ function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTa
               accessibilityState={{ selected: it.focused }}
               accessibilityLabel={it.badge ? `${it.label}, ${it.badge} não lidas` : it.label}
               onPress={it.onPress}
-              style={({ hovered }: { hovered?: boolean }) => ({
+              style={({ hovered }: { pressed: boolean; hovered?: boolean }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: space.md,
@@ -58,12 +88,12 @@ function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTa
             </Pressable>
           ))}
         </View>
-        <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, minHeight: 40 }}>
-          <Icon name="settings" color={c.textMuted} size={18} />
-          <Text variant="bodyStrong" muted>
-            Configurações
-          </Text>
-        </Pressable>
+        <View style={{ gap: 2, flex: 1 }}>
+          <SideItem icon="message-circle" label="Chat" badge={unreadChat} active={pathname.startsWith('/chat')} onPress={() => router.push('/chat')} />
+          <SideItem icon="bell" label="Notificações" badge={unreadNotifications} active={pathname.startsWith('/notificacoes')} onPress={() => router.push('/notificacoes')} />
+          <SideItem icon="book-open" label="Tutorial" active={pathname.startsWith('/tutorial')} onPress={() => router.push('/tutorial')} />
+        </View>
+        <SideItem icon="settings" label="Configurações" onPress={() => router.push('/settings')} />
       </View>
     );
   }
@@ -116,8 +146,6 @@ function Badge({ n }: { n: number }) {
 export default function TabsLayout() {
   const wide = useWide();
   const { c } = useTheme();
-  const rooms = useChatRooms();
-  const unread = (rooms.data ?? []).reduce((a, r) => a + r.unread, 0);
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
@@ -128,9 +156,9 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Início' }} />
-      <Tabs.Screen name="treinos" options={{ title: 'Treinos' }} />
+      <Tabs.Screen name="treinar" options={{ title: 'Treinar' }} />
+      <Tabs.Screen name="dieta" options={{ title: 'Dieta' }} />
       <Tabs.Screen name="ranking" options={{ title: 'Ranking' }} />
-      <Tabs.Screen name="chat" options={{ title: 'Chat', tabBarBadge: unread || undefined }} />
       <Tabs.Screen name="perfil" options={{ title: 'Perfil' }} />
     </Tabs>
   );

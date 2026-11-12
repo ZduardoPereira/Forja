@@ -1,4 +1,5 @@
-import { type ReactNode, useState } from 'react';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { type ReactNode, useContext, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { session } from '@/lib/api';
@@ -44,9 +45,10 @@ export function ServerField() {
 
 export function AuthShell({ children }: { children: ReactNode }) {
   const { c } = useTheme();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'web' ? undefined : 'padding'} keyboardVerticalOffset={headerHeight} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space.xl }} keyboardShouldPersistTaps="handled">
           <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center', gap: space.xl }}>{children}</View>
         </ScrollView>

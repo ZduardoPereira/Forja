@@ -221,3 +221,53 @@ export function scoreCompetition(rules: CompetitionRules, participants: Particip
   });
   return rows;
 }
+
+// ---------------------------------------------------------------------------
+// Ranking permanente "Evolução no objetivo" (sem precisar criar competição)
+// ---------------------------------------------------------------------------
+
+/** Janela do ranking de evolução: a partir da primeira medida dos últimos 90 dias. */
+export const EVOLUTION_WINDOW_DAYS = 90;
+/** Mínimo entre a primeira e a última medida para a evolução valer (evita ruído de 2 ou 3 dias). */
+export const EVOLUTION_MIN_DAYS = 7;
+
+export interface EvolutionResult {
+  status: ComponentStatus;
+  /** 0–100: 100 = no ritmo saudável esperado para o objetivo. */
+  points: number;
+  summary: string;
+  lowConfidence?: boolean;
+  /** O que foi medido: corpo (emagrecer/massa/recomposição) ou testes (performance). */
+  basis: 'body' | 'tests';
+  since: string | null;
+}
+
+export function scoreEvolution(p: Pick<ParticipantInput, 'goal' | 'experience' | 'body' | 'tests'>, today: string): EvolutionResult {
+  const from = addDays(today, -EVOLUTION_WINDOW_DAYS);
+  const rulesFrom = (start: string, weights: CompetitionRules['weights']): CompetitionRules => ({ startDate: start, endDate: today, weights, consistencyTargetPerWeek: 1 });
+  const waiting = (start: string, basis: EvolutionResult['basis']): EvolutionResult => ({
+    status: 'no_data',
+    points: 0,
+    basis,
+    since: start,
+    summary: `Primeira medida em ${start.slice(8, 10)}/${start.slice(5, 7)}: a evolução aparece com ${EVOLUTION_MIN_DAYS} dias ou mais de registros.`,
+  });
+
+  if (p.goal === 'performance') {
+    const tests = p.tests.filter((t) => t.date >= from && t.date <= today);
+    const dates = tests.map((t) => t.date).sort();
+    const start = dates[0];
+    if (!start) return { status: 'no_data', points: 0, basis: 'tests', since: null, summary: 'Registre um teste físico e repita depois para medir a evolução.' };
+    if (daysBetween(start, dates.at(-1)!) < EVOLUTION_MIN_DAYS) return waiting(start, 'tests');
+    const r = scorePerformance(tests, rulesFrom(start, { body: 0, performance: 100, consistency: 0 }), today).result;
+    return { status: r.status, points: r.points, summary: r.status === 'ok' ? r.summary : 'Repita um teste que você já fez para medir a melhora.', basis: 'tests', since: start };
+  }
+
+  const body = p.body.filter((b) => b.date >= from && b.date <= today && (b.weightKg != null || b.bodyFatPct != null || b.fatMassKg != null || b.leanMassKg != null));
+  const dates = body.map((b) => b.date).sort();
+  const start = dates[0];
+  if (!start) return { status: 'no_data', points: 0, basis: 'body', since: null, summary: 'Registre seu peso (ou uma avaliação) e repita depois para medir a evolução.' };
+  if (daysBetween(start, dates.at(-1)!) < EVOLUTION_MIN_DAYS) return waiting(start, 'body');
+  const r = scoreBody(p.goal, p.experience, body, rulesFrom(start, { body: 100, performance: 0, consistency: 0 }), today);
+  return { status: r.status, points: r.points, summary: r.summary, lowConfidence: r.lowConfidence, basis: 'body', since: start };
+}

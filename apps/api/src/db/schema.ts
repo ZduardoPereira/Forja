@@ -51,6 +51,8 @@ export const users = pgTable(
     /** Mostrar números do corpo (peso, % gordura) para o grupo. Fotos têm visibilidade própria. */
     shareBody: boolean('share_body').notNull().default(false),
     bio: text('bio'),
+    /** Categorias de notificação que chegam no celular/PC (ver NOTIFICATION_CATEGORIES). */
+    notifyPrefs: jsonb('notify_prefs').notNull().default({}),
     createdAt: createdAt(),
     lastSeenAt: tsz('last_seen_at'),
   },
@@ -267,6 +269,8 @@ export const events = pgTable(
     kind: text('kind').notNull(),
     routineId: uuid('routine_id').references(() => routines.id, { onDelete: 'set null' }),
     cancelledAt: tsz('cancelled_at'),
+    /** Quando o lembrete de 1 hora antes foi enviado. */
+    remindedAt: tsz('reminded_at'),
     createdAt: createdAt(),
   },
   (t) => [index('events_starts_idx').on(t.startsAt), index('events_creator_idx').on(t.createdBy), index('events_routine_idx').on(t.routineId)],
@@ -301,9 +305,39 @@ export const workoutLogs = pgTable(
     durationMin: integer('duration_min'),
     routineId: uuid('routine_id').references(() => routines.id, { onDelete: 'set null' }),
     notes: text('notes'),
+    /** 'manual' (marcou a atividade), 'session' (assistente de treino) ou 'admin' (corrigido pelo administrador). */
+    source: text('source').notNull().default('manual'),
+    title: text('title'),
+    startedAt: tsz('started_at'),
     createdAt: createdAt(),
   },
   (t) => [index('workout_logs_user_date_idx').on(t.userId, t.date), index('workout_logs_routine_idx').on(t.routineId)],
+);
+
+/** Séries feitas no assistente de treino (peso, repetições, descanso). */
+export const workoutSets = pgTable(
+  'workout_sets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    logId: uuid('log_id')
+      .notNull()
+      .references(() => workoutLogs.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    exerciseId: text('exercise_id')
+      .notNull()
+      .references(() => exercises.id),
+    /** Ordem do exercício no treino. */
+    position: integer('position').notNull(),
+    setIndex: integer('set_index').notNull(),
+    weightKg: num('weight_kg', 6, 2),
+    reps: integer('reps'),
+    durationSec: integer('duration_sec'),
+    restSec: integer('rest_sec'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('workout_sets_log_idx').on(t.logId), index('workout_sets_user_exercise_idx').on(t.userId, t.exerciseId, t.createdAt), index('workout_sets_exercise_idx').on(t.exerciseId)],
 );
 
 // ---------------------------------------------------------------------------
@@ -453,6 +487,50 @@ export const competitionParticipants = pgTable(
     joinedAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.competitionId, t.userId] }), index('competition_participants_user_idx').on(t.userId)],
+);
+
+// ---------------------------------------------------------------------------
+// Notificações
+// ---------------------------------------------------------------------------
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Quem recebe. */
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(),
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    /** Caminho no app para abrir ao tocar (ex.: /events/…). */
+    url: text('url'),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    readAt: tsz('read_at'),
+  },
+  (t) => [index('notifications_user_created_idx').on(t.userId, t.createdAt), index('notifications_actor_idx').on(t.actorId)],
+);
+
+/** Inscrições de notificação no navegador / app instalado pelo navegador (Web Push). */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: createdAt(),
+    lastSuccessAt: tsz('last_success_at'),
+    failures: integer('failures').notNull().default(0),
+  },
+  (t) => [uniqueIndex('push_subscriptions_endpoint_uq').on(t.endpoint), index('push_subscriptions_user_idx').on(t.userId)],
 );
 
 export const meta = pgTable('meta', {

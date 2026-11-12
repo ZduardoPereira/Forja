@@ -10,7 +10,9 @@ import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } fro
 import type { Limiters } from '../http/rate-limit';
 import type { RouteRegistry } from '../http/registry';
 import { assertOwnFiles, removeUserFiles } from '../services/files';
+import { notify } from '../services/notify';
 import { nameKey, ownProfile, publicUser } from '../services/people';
+import { queueLeaderCheck } from '../services/rankings';
 
 const ARGON = { memoryCost: 19_456, timeCost: 2, parallelism: 1 };
 let dummyHash: Promise<string> | null = null;
@@ -78,6 +80,9 @@ export function accountRoutes(r: RouteRegistry, limiters: Limiters) {
       const isFirst = (await deps.db.$count(s.users)) === 0;
       const [u] = await deps.db.insert(s.users).values({ name: body.name, nameKey: key, passwordHash, isAdmin: isFirst }).returning();
       const token = await createSession(deps, u!.id, req.headers['user-agent']);
+      if (!isFirst) {
+        await notify(deps, { to: 'all', except: u!.id, category: 'group', kind: 'member.joined', title: `👋 ${u!.name} entrou no grupo`, body: 'Dê as boas-vindas no chat e chame para o próximo treino.', url: `/people/${u!.id}`, actorId: u!.id });
+      }
       return { token, user: ownProfile(deps, u!) };
     },
   });
@@ -142,6 +147,8 @@ export function accountRoutes(r: RouteRegistry, limiters: Limiters) {
       }
       if (body.avatarFileId) await assertOwnFiles(deps.db, user.id, [body.avatarFileId]);
       const [u] = await deps.db.update(s.users).set(patch).where(eq(s.users.id, user.id)).returning();
+      // Objetivo, experiência e sexo mudam a evolução e a força relativa.
+      if (body.goal || body.experience || body.sex !== undefined) void queueLeaderCheck(deps);
       return ownProfile(deps, u!);
     },
   });

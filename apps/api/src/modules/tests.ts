@@ -22,6 +22,7 @@ import { badRequest, forbidden, notFound } from '../http/errors';
 import type { RouteRegistry } from '../http/registry';
 import { assertOwnFiles, fileView } from '../services/files';
 import { latestBodyweight, publicUser } from '../services/people';
+import { queueLeaderCheck } from '../services/rankings';
 
 type ResultRow = typeof s.testResults.$inferSelect;
 const asLike = (r: ResultRow): TestResultLike => ({ testId: r.testId as TestId, date: r.date, value: r.value, reps: r.reps, bodyweightKg: r.bodyweightKg });
@@ -224,6 +225,7 @@ export function testRoutes(r: RouteRegistry) {
         .returning();
       const prevBest = bestResult(previous.map(asLike));
       const isRecord = !prevBest || isBetter(def, effectiveValue(asLike(row!)), effectiveValue(prevBest));
+      void queueLeaderCheck(deps);
       return { ...resultView(deps, row!, []), isRecord, firstTime: !prevBest };
     },
   });
@@ -237,6 +239,7 @@ export function testRoutes(r: RouteRegistry) {
     handler: async ({ deps, user, params }) => {
       const rows = await deps.db.delete(s.testResults).where(and(eq(s.testResults.id, params.id), eq(s.testResults.userId, user.id))).returning({ id: s.testResults.id });
       if (!rows.length) throw notFound('Resultado');
+      void queueLeaderCheck(deps);
       return undefined;
     },
   });

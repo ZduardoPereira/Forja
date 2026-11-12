@@ -1,11 +1,13 @@
-import { routineSchema, workoutLogSchema } from '@forja/shared';
-import { and, asc, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm';
+import { isLoggableDate, routineSchema, workoutLogSchema } from '@forja/shared';
+import { and, asc, desc, eq, ilike, inArray, isNull, or, type SQL, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DbOrTx } from '../db/client';
 import * as s from '../db/schema';
 import type { Deps } from '../deps';
 import { badRequest, notFound } from '../http/errors';
 import type { RouteRegistry } from '../http/registry';
+import { afterActivity, streakOf, todayIn } from '../services/activity';
+import { queueLeaderCheck } from '../services/rankings';
 
 const listCols = {
   id: s.exercises.id,
@@ -185,8 +187,26 @@ export function trainingRoutes(r: RouteRegistry) {
     tag: 'Treinos',
     summary: 'Meus treinos registrados',
     query: z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) }),
-    handler: async ({ deps, user, query }) =>
-      deps.db.select().from(s.workoutLogs).where(eq(s.workoutLogs.userId, user.id)).orderBy(desc(s.workoutLogs.date), desc(s.workoutLogs.createdAt)).limit(query.limit),
+    handler: async ({ deps, user, query }) => {
+      const logs = await deps.db.select().from(s.workoutLogs).where(eq(s.workoutLogs.userId, user.id)).orderBy(desc(s.workoutLogs.date), desc(s.workoutLogs.createdAt)).limit(query.limit);
+      const ids = logs.filter((l) => l.source === 'session').map((l) => l.id);
+      const sums = ids.length
+        ? await deps.db
+            .select({
+              logId: s.workoutSets.logId,
+              sets: sql<number>`count(*)::int`,
+              exercises: sql<number>`count(distinct ${s.workoutSets.exerciseId})::int`,
+              volumeKg: sql<number>`coalesce(sum(coalesce(${s.workoutSets.weightKg}, 0) * coalesce(${s.workoutSets.reps}, 0)), 0)::float`,
+            })
+            .from(s.workoutSets)
+            .where(inArray(s.workoutSets.logId, ids))
+            .groupBy(s.workoutSets.logId)
+        : [];
+      return logs.map((l) => {
+        const x = sums.find((y) => y.logId === l.id);
+        return { ...l, summary: x ? { sets: x.sets, exercises: x.exercises, volumeKg: Math.round(x.volumeKg) } : null };
+      });
+    },
   });
   r.add({
     method: 'post',
@@ -196,15 +216,20 @@ export function trainingRoutes(r: RouteRegistry) {
     status: 201,
     body: workoutLogSchema,
     handler: async ({ deps, user, body }) => {
+      const today = todayIn(deps);
+      if (!isLoggableDate(body.date, today)) throw badRequest('Dá para marcar atividade de hoje e dos 2 dias anteriores (assim a sequência vale para todo mundo).');
       if (body.routineId) {
         const routine = await loadRoutine(deps.db, body.routineId);
         if (!routine || (routine.ownerId && routine.ownerId !== user.id)) throw badRequest('Rotina inválida');
       }
+      const before = await streakOf(deps, user.id, today);
       const [row] = await deps.db
         .insert(s.workoutLogs)
         .values({ userId: user.id, date: body.date, kind: body.kind, durationMin: body.durationMin ?? null, routineId: body.routineId ?? null, notes: body.notes ?? null })
         .returning();
-      return row;
+      const streak = await afterActivity(deps, user.id, before);
+      void queueLeaderCheck(deps);
+      return { ...row!, streak };
     },
   });
   r.add({
@@ -216,6 +241,8 @@ export function trainingRoutes(r: RouteRegistry) {
     handler: async ({ deps, user, params }) => {
       const rows = await deps.db.delete(s.workoutLogs).where(and(eq(s.workoutLogs.id, params.id), eq(s.workoutLogs.userId, user.id))).returning({ id: s.workoutLogs.id });
       if (!rows.length) throw notFound('Treino');
+      deps.realtime.broadcast({ type: 'activity.updated', userId: user.id });
+      void queueLeaderCheck(deps);
       return undefined;
     },
   });

@@ -5,16 +5,21 @@ import type { AuthUser } from '../http/auth';
 
 export type RealtimeEvent =
   | { type: 'chat.message'; roomId: string; message: unknown }
+  | { type: 'chat.deleted'; roomId: string; messageId: string }
   | { type: 'event.updated'; eventId: string }
-  | { type: 'presence'; online: string[] };
+  | { type: 'presence'; online: string[] }
+  | { type: 'notification'; notification: unknown }
+  | { type: 'activity.updated'; userId: string };
 
 export interface Realtime {
   broadcast(event: RealtimeEvent): void;
+  /** Entrega só para as conexões de uma pessoa (notificações). */
+  sendTo(userId: string, event: RealtimeEvent): void;
   online(): string[];
 }
 
 /** Sem servidor WebSocket (testes e scripts): só descarta os eventos. */
-export const noopRealtime: Realtime = { broadcast: () => undefined, online: () => [] };
+export const noopRealtime: Realtime = { broadcast: () => undefined, sendTo: () => undefined, online: () => [] };
 
 /**
  * Canal em tempo real em /ws. O cliente conecta e envia { type: 'auth', token } como
@@ -60,6 +65,10 @@ export function attachRealtime(server: Server, logger: Logger, authenticate: (to
     broadcast(event) {
       const payload = JSON.stringify(event);
       for (const ws of clients.keys()) if (ws.readyState === ws.OPEN) ws.send(payload);
+    },
+    sendTo(userId, event) {
+      const payload = JSON.stringify(event);
+      for (const [ws, u] of clients) if (u.id === userId && ws.readyState === ws.OPEN) ws.send(payload);
     },
     online: () => [...new Set([...clients.values()].map((u) => u.id))],
     close() {

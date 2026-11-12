@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import { Badge, Card, Divider, Empty, ErrorBox, Header, Icon, ListItem, Loading, Row, Screen, Text } from '@/components/ui';
+import { Badge, Card, Divider, Empty, ErrorBox, Icon, ListItem, Loading, Row, Screen, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { relativeDay, time } from '@/lib/format';
 import { useChatRooms } from '@/lib/queries';
@@ -47,8 +47,7 @@ export default function ChatList() {
     />
   );
   return (
-    <Screen tab refreshing={rooms.isRefetching} onRefresh={() => void rooms.refetch()}>
-      <Header title="Chat" />
+    <Screen refreshing={rooms.isRefetching} onRefresh={() => void rooms.refetch()}>
       {rooms.isLoading ? <Loading /> : rooms.error ? <ErrorBox error={rooms.error} onRetry={() => void rooms.refetch()} /> : null}
       {group.length ? (
         <Card padded={false} style={{ paddingHorizontal: space.lg }}>

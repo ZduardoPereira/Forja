@@ -1,8 +1,21 @@
 import { and, asc, desc, eq, gte, gt, inArray, isNull, lte, ne } from 'drizzle-orm';
 import * as s from '../db/schema';
 import type { RouteRegistry } from '../http/registry';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { streakOf } from '../services/activity';
 import { latestBodyweight, publicUser } from '../services/people';
 import { competitionBoard, localDateIn } from './competitions';
+
+/** APK publicado junto com o site (npm run apk): o app instalado compara com a própria versão. */
+async function apkInfo(webDist: string): Promise<{ versionCode: number; versionName: string; url: string } | null> {
+  try {
+    const info = JSON.parse(await readFile(path.join(webDist, 'forja-apk.json'), 'utf8')) as { versionCode?: number; versionName?: string };
+    return typeof info.versionCode === 'number' ? { versionCode: info.versionCode, versionName: info.versionName ?? '', url: '/forja.apk' } : null;
+  } catch {
+    return null;
+  }
+}
 
 export function homeRoutes(r: RouteRegistry) {
   r.add({
@@ -43,8 +56,13 @@ export function homeRoutes(r: RouteRegistry) {
         unread += await deps.db.$count(s.chatMessages, and(eq(s.chatMessages.roomId, room.id), ne(s.chatMessages.userId, user.id), since ? gt(s.chatMessages.createdAt, since) : undefined));
       }
       const creators = upcoming.length ? await deps.db.select().from(s.users).where(inArray(s.users.id, [...new Set(upcoming.map((e) => e.createdBy))])) : [];
+      const streak = await streakOf(deps, user.id, today);
+      const unreadNotifications = await deps.db.$count(s.notifications, and(eq(s.notifications.userId, user.id), isNull(s.notifications.readAt)));
       return {
         today,
+        streak,
+        unreadNotifications,
+        apk: await apkInfo(deps.config.WEB_DIST),
         events: upcoming.map((e) => ({
           id: e.id,
           title: e.title,

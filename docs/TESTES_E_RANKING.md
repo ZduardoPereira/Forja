@@ -80,3 +80,16 @@ Ana (emagrecer) perde gordura exatamente no ritmo esperado e Bruno (ganhar massa
 - **Números do corpo** (peso, % de gordura, avaliações) só aparecem para os amigos se a pessoa ativar "Mostrar meus números do corpo ao grupo". A competição sempre usa os dados para calcular; para quem não compartilha, os outros veem **só os pontos** do bloco Corpo — as variações (ex.: "Gordura −1,7 kg") aparecem apenas para a própria pessoa. Isso evita que alguém estime o peso do outro a partir dos pontos.
 - **Fotos:** cada foto é "Só eu" ou "Grupo". Laudos e planos alimentares são sempre privados.
 - **Strava:** só a própria pessoa vê (regra do Strava) — ver [STRAVA.md](STRAVA.md).
+
+## Os três rankings permanentes (versão 2.1)
+Valem o tempo todo, sem precisar criar competição (aba **Ranking**):
+
+| Ranking | O que conta | Detalhes |
+|---|---|---|
+| 🔥 **Sequência** | dias seguidos com atividade | Conta treino do assistente, atividade marcada ou presença confirmada em treino marcado. Dá para registrar até 2 dias para trás; um dia inteiro em branco zera. Empate: vence o maior recorde. |
+| 💪 **Atributos físicos** | soma das notas 0–20 dos 11 testes (máx. 220) | É a soma dos eixos do radar: quem faz mais testes e vai melhor em cada um sobe. Força conta em relação ao peso corporal. |
+| 📈 **Evolução no objetivo** | 0–100 pontos | A mesma conta do bloco "Corpo" da competição, nos últimos 90 dias, a partir da primeira medida da pessoa: emagrecer, ganhar massa e recomposição pelo corpo; **performance** pela melhora nos testes. 100 = no ritmo saudável esperado (ou até 1,5× ele); acima disso cai, para não incentivar ritmo exagerado. Precisa de pelo menos 7 dias entre a primeira e a última medida. |
+
+Quando o 1º lugar de um ranking muda, o novo líder e quem perdeu a liderança recebem notificação, e o resto do grupo vê no sininho. Empate com quem já liderava não troca o líder. A conferência roda logo depois de cada mudança (atividade, teste, pesagem, avaliação, objetivo) e na virada do dia.
+
+Quem não mostra os números do corpo ao grupo aparece na Evolução só com os pontos (o resumo, que revelaria o peso, fica escondido para os outros).

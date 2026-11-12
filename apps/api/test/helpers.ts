@@ -9,6 +9,7 @@ import { createDb } from '../src/db/client';
 import { seedReference } from '../src/db/seed';
 import type { Deps } from '../src/deps';
 import { createLogger } from '../src/logger';
+import { memoryPush } from '../src/services/push';
 import { noopRealtime, type Realtime } from '../src/services/realtime';
 import type { StravaActivity, StravaApi, StravaDetailedActivity, StravaTokenResponse } from '../src/services/strava-api';
 
@@ -51,9 +52,10 @@ export async function createTestContext(opts: { env?: Record<string, string>; re
   await handle.migrate();
   await seedReference(handle.db);
   const strava = new FakeStrava();
-  const deps: Deps = { db: handle.db, config, logger: createLogger('silent'), realtime: opts.realtime ?? noopRealtime, strava, now: opts.now ?? (() => new Date()) };
+  const push = memoryPush();
+  const deps: Deps = { db: handle.db, config, logger: createLogger('silent'), realtime: opts.realtime ?? noopRealtime, push, strava, now: opts.now ?? (() => new Date()) };
   const app = createApp(deps);
-  return { deps, app, handle, strava, api: () => request(app) };
+  return { deps, app, handle, strava, push, api: () => request(app) };
 }
 export type Ctx = Awaited<ReturnType<typeof createTestContext>>;
 

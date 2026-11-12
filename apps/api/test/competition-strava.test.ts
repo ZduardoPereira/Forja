@@ -104,7 +104,8 @@ describe('competição', () => {
     // Bruno (iniciante): ganhou massa magra no ritmo esperado (1% do peso por mês).
     await ctx.api().post('/v1/body/assessments').set(bruno.auth).send({ date: daysAgo(28), weightKg: 70, fatMassKg: 10.5, leanMassKg: 59.5 }).expect(201);
     await ctx.api().post('/v1/body/assessments').set(bruno.auth).send({ date: daysAgo(0), weightKg: 70.86, fatMassKg: 10.7, leanMassKg: 60.16 }).expect(201);
-    for (const d of [2, 5, 9, 12, 16, 20]) await ctx.api().post('/v1/logs').set(ana.auth).send({ date: daysAgo(d), kind: 'run' }).expect(201);
+    // Histórico de treinos já existente (o registro pelo app só aceita hoje e os 2 dias anteriores).
+    await ctx.deps.db.insert(s.workoutLogs).values([2, 5, 9, 12, 16, 20].map((d) => ({ userId: ana.id, date: daysAgo(d), kind: 'run' })));
     const board = await ctx.api().get(`/v1/competitions/${compId}`).set(caio.auth);
     expect(board.body.phase).toBe('active');
     const byName = Object.fromEntries(board.body.standings.map((x: { name: string }) => [x.name, x]));

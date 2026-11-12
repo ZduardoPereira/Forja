@@ -1,7 +1,7 @@
 {
   "name": "forja",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "FORJA — app privado de treinos, evolução e competição entre amigos (PC + Android).",
   "workspaces": [
     "packages/*",
@@ -33,6 +33,7 @@
     "pc:uninstall": "node tools/host/forja-pc.mjs uninstall",
     "apk": "node tools/android/build-apk.mjs build",
     "apk:setup": "node tools/android/build-apk.mjs setup",
+    "atualizar": "npm run pc:install && npm run apk",
     "catalogue:build": "npm run catalogue:build -w @forja/api",
     "assets:build": "node tools/assets/build-assets.mjs",
     "test": "npm run test --workspaces --if-present",

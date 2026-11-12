@@ -29,6 +29,8 @@ export default function EventScreen() {
   if (event.error || !event.data) return <ErrorBox error={event.error} onRetry={() => void event.refetch()} />;
   const e = event.data;
   const mine = e.createdBy === me?.id;
+  // Quem marcou ou um administrador pode editar e cancelar.
+  const canManage = mine || !!me?.isAdmin;
   const end = new Date(Date.parse(e.startsAt) + e.durationMin * 60_000);
 
   return (
@@ -83,7 +85,7 @@ export default function EventScreen() {
 
       <Row wrap gap={space.sm}>
         {e.roomId ? <Button title="Conversa do treino" icon="message-circle" kind="secondary" onPress={() => router.push(`/chat/${e.roomId}`)} /> : null}
-        {mine && !e.cancelledAt ? <Button title="Editar" icon="edit-2" kind="secondary" onPress={() => router.push({ pathname: '/events/new', params: { id: e.id } })} /> : null}
+        {canManage && !e.cancelledAt ? <Button title="Editar" icon="edit-2" kind="secondary" onPress={() => router.push({ pathname: '/events/new', params: { id: e.id } })} /> : null}
       </Row>
 
       <Section title="Presença">
@@ -124,7 +126,7 @@ export default function EventScreen() {
         </Section>
       ) : null}
 
-      {mine && !e.cancelledAt ? (
+      {canManage && !e.cancelledAt ? (
         <Button
           title="Cancelar treino"
           kind="danger"

@@ -3,6 +3,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { exerciseSubtitle } from '@/components/exercises';
 import { confirm } from '@/components/forms';
+import { useStartWorkout } from '@/components/workout';
 import { Badge, Button, Card, Divider, ErrorBox, ListItem, Loading, Row, Screen, Text } from '@/components/ui';
 import { del, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -17,6 +18,7 @@ export default function RoutineScreen() {
   const routine = useRoutine(id);
   const { me } = useAuth();
   const { c } = useTheme();
+  const { start, busy } = useStartWorkout();
   const copy = useMutation({
     mutationFn: () => post<Routine>(`/routines/${id}/copy`),
     onSuccess: async (r) => {
@@ -44,9 +46,10 @@ export default function RoutineScreen() {
         <Text variant="display">{r.name}</Text>
         {r.description ? <Text muted>{r.description}</Text> : null}
       </View>
+      <Button title="Treinar esta rotina agora" icon="play" onPress={() => void start(r.id)} loading={busy} testID="start-routine" />
       <Row wrap gap={space.sm}>
-        <Button title="Marcar treino com ela" icon="calendar" small onPress={() => router.push({ pathname: '/events/new', params: { routineId: r.id } })} />
-        <Button title="Registrar como feito" icon="check-circle" small kind="secondary" onPress={() => router.push({ pathname: '/log', params: { routineId: r.id } })} />
+        <Button title="Marcar treino com o grupo" icon="calendar" small kind="secondary" onPress={() => router.push({ pathname: '/events/new', params: { routineId: r.id } })} />
+        <Button title="Já fiz: marcar como feito" icon="check-circle" small kind="secondary" onPress={() => router.push({ pathname: '/log', params: { routineId: r.id } })} />
         {mine ? (
           <Button title="Editar" icon="edit-2" small kind="secondary" onPress={() => router.push({ pathname: '/routines/edit', params: { id: r.id } })} />
         ) : (

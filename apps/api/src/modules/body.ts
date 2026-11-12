@@ -7,6 +7,7 @@ import type { Deps } from '../deps';
 import { forbidden, notFound } from '../http/errors';
 import type { RouteRegistry } from '../http/registry';
 import { assertOwnFiles, deleteFile, fileView } from '../services/files';
+import { queueLeaderCheck } from '../services/rankings';
 
 const idParams = z.object({ id: z.uuid() });
 
@@ -84,7 +85,7 @@ export function bodyRoutes(r: RouteRegistry) {
         const [w] = await tx.insert(s.weighIns).values({ userId: user.id, date: body.date, weightKg: body.weightKg, note: body.note ?? null }).returning();
         await attach(tx, user.id, 'weigh_in', w!.id, body.date, body.photoFileIds);
         return w;
-      }),
+      }).finally(() => void queueLeaderCheck(deps)),
   });
 
   r.add({
@@ -99,6 +100,7 @@ export function bodyRoutes(r: RouteRegistry) {
         if (!rows.length) throw notFound('Pesagem');
         await tx.delete(s.attachments).where(and(eq(s.attachments.entityType, 'weigh_in'), eq(s.attachments.entityId, params.id)));
       });
+      void queueLeaderCheck(deps);
       return undefined;
     },
   });
@@ -116,7 +118,7 @@ export function bodyRoutes(r: RouteRegistry) {
       }
       await attach(tx, userId, 'assessment', row!.id, body.date, fileIds);
       return row;
-    });
+    }).finally(() => void queueLeaderCheck(deps));
 
   r.add({
     method: 'post',
@@ -150,6 +152,7 @@ export function bodyRoutes(r: RouteRegistry) {
         if (!rows.length) throw notFound('Avaliação');
         await tx.delete(s.attachments).where(and(eq(s.attachments.entityType, 'assessment'), eq(s.attachments.entityId, params.id)));
       });
+      void queueLeaderCheck(deps);
       return undefined;
     },
   });

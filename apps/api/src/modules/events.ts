@@ -8,7 +8,16 @@ import { badRequest, forbidden, notFound } from '../http/errors';
 import type { RouteRegistry } from '../http/registry';
 import { postMessage } from './chat';
 import { loadRoutine } from './training';
+import { afterActivity, streakOf } from '../services/activity';
+import { notify, whenLabel } from '../services/notify';
 import { publicUser } from '../services/people';
+import { queueLeaderCheck } from '../services/rankings';
+
+/** Quem respondeu "vou" ou "talvez" (recebe os avisos de mudança e o lembrete). */
+async function interested(db: DbOrTx, eventId: string): Promise<string[]> {
+  const rows = await db.select({ userId: s.eventRsvps.userId }).from(s.eventRsvps).where(and(eq(s.eventRsvps.eventId, eventId), inArray(s.eventRsvps.status, ['going', 'maybe'])));
+  return rows.map((r) => r.userId);
+}
 
 type EventRow = typeof s.events.$inferSelect;
 
@@ -112,6 +121,17 @@ export function eventRoutes(r: RouteRegistry) {
         await postMessage(deps, user.id, group.id, `📅 Marquei "${body.title}" (${ACTIVITY_LABELS[body.kind as ActivityKind]}) para ${dateLabel(startsAt, deps.config.TIMEZONE)}${where}. Quem vem?`, null);
       }
       deps.realtime.broadcast({ type: 'event.updated', eventId: event.id });
+      await notify(deps, {
+        to: 'all',
+        except: user.id,
+        category: 'events',
+        kind: 'event.created',
+        title: `📅 ${user.name} marcou: ${body.title}`,
+        body: `${whenLabel(startsAt, deps.config.TIMEZONE)}${body.location ? ` · ${body.location}` : ''}. Toque para confirmar presença.`,
+        url: `/events/${event.id}`,
+        actorId: user.id,
+        tag: `event:${event.id}`,
+      });
       const [view] = await eventViews(deps, user.id, [event]);
       return view;
     },
@@ -126,14 +146,30 @@ export function eventRoutes(r: RouteRegistry) {
     body: eventSchema,
     handler: async ({ deps, user, params, body }) => {
       const e = await getEvent(deps.db, params.id);
-      if (e.createdBy !== user.id) throw forbidden('Só quem marcou pode editar');
+      if (e.createdBy !== user.id && !user.isAdmin) throw forbidden('Só quem marcou (ou um administrador) pode editar');
+      const startsAt = new Date(body.startsAt);
+      const moved = startsAt.getTime() !== e.startsAt.getTime() || (body.location ?? null) !== e.location;
       const [row] = await deps.db
         .update(s.events)
-        .set({ title: body.title, description: body.description ?? null, startsAt: new Date(body.startsAt), durationMin: body.durationMin, location: body.location ?? null, kind: body.kind, routineId: body.routineId ?? null })
+        // Mudou o horário: o lembrete de 1 hora antes volta a valer.
+        .set({ title: body.title, description: body.description ?? null, startsAt, durationMin: body.durationMin, location: body.location ?? null, kind: body.kind, routineId: body.routineId ?? null, ...(moved ? { remindedAt: null } : {}) })
         .where(eq(s.events.id, params.id))
         .returning();
       await deps.db.update(s.chatRooms).set({ title: body.title }).where(eq(s.chatRooms.eventId, params.id));
       deps.realtime.broadcast({ type: 'event.updated', eventId: params.id });
+      if (moved && !e.cancelledAt) {
+        await notify(deps, {
+          to: await interested(deps.db, params.id),
+          except: user.id,
+          category: 'events',
+          kind: 'event.changed',
+          title: `✏️ Treino alterado: ${body.title}`,
+          body: `Agora: ${whenLabel(startsAt, deps.config.TIMEZONE)}${body.location ? ` · ${body.location}` : ''}.`,
+          url: `/events/${params.id}`,
+          actorId: user.id,
+          tag: `event:${params.id}`,
+        });
+      }
       const [view] = await eventViews(deps, user.id, [row!]);
       return view;
     },
@@ -147,9 +183,22 @@ export function eventRoutes(r: RouteRegistry) {
     params: z.object({ id: z.uuid() }),
     handler: async ({ deps, user, params }) => {
       const e = await getEvent(deps.db, params.id);
-      if (e.createdBy !== user.id) throw forbidden('Só quem marcou pode cancelar');
+      if (e.createdBy !== user.id && !user.isAdmin) throw forbidden('Só quem marcou (ou um administrador) pode cancelar');
       await deps.db.update(s.events).set({ cancelledAt: deps.now() }).where(eq(s.events.id, params.id));
       deps.realtime.broadcast({ type: 'event.updated', eventId: params.id });
+      if (!e.cancelledAt) {
+        await notify(deps, {
+          to: await interested(deps.db, params.id),
+          except: user.id,
+          category: 'events',
+          kind: 'event.cancelled',
+          title: `❌ Treino cancelado: ${e.title}`,
+          body: `Era ${whenLabel(e.startsAt, deps.config.TIMEZONE)}. Cancelado por ${user.name}.`,
+          url: `/events/${params.id}`,
+          actorId: user.id,
+          tag: `event:${params.id}`,
+        });
+      }
       return undefined;
     },
   });
@@ -185,11 +234,15 @@ export function eventRoutes(r: RouteRegistry) {
       const e = await getEvent(deps.db, params.id);
       if (e.cancelledAt) throw badRequest('Treino cancelado');
       if (e.startsAt.getTime() > deps.now().getTime()) throw badRequest('A presença só pode ser confirmada depois do início do treino');
+      const before = await streakOf(deps, user.id);
       await deps.db
         .insert(s.eventRsvps)
         .values({ eventId: params.id, userId: user.id, status: body.attended ? 'going' : 'not_going', attended: body.attended, updatedAt: deps.now() })
         .onConflictDoUpdate({ target: [s.eventRsvps.eventId, s.eventRsvps.userId], set: { attended: body.attended, updatedAt: deps.now() } });
       deps.realtime.broadcast({ type: 'event.updated', eventId: params.id });
+      // Presença confirmada conta como atividade do dia (sequência e rankings).
+      await afterActivity(deps, user.id, before);
+      void queueLeaderCheck(deps);
       const [view] = await eventViews(deps, user.id, [e]);
       return view;
     },

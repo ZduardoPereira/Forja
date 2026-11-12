@@ -1,3 +1,4 @@
+import { File, UploadType } from 'expo-file-system';
 import { Platform } from 'react-native';
 import { storage } from './storage';
 
@@ -114,16 +115,40 @@ export interface UploadedFile {
 
 /**
  * Envia uma imagem escolhida. No navegador usa o arquivo (File) que o seletor devolve
- * (ou lê a uri como Blob); no celular, {uri,name,type}.
+ * (ou lê a uri como Blob). No celular, o envio é nativo (expo-file-system): o `fetch` do
+ * Expo 58 não aceita mais o formato antigo {uri,name,type} no FormData — era por isso que
+ * as fotos não subiam pelo APK.
  */
 export async function uploadImage(uri: string, kind: string, mimeType = 'image/jpeg', file?: Blob | null): Promise<UploadedFile> {
-  const form = new FormData();
-  form.append('kind', kind);
   if (Platform.OS === 'web') {
+    const form = new FormData();
+    form.append('kind', kind);
     const blob = file ?? (await (await fetch(uri)).blob());
     form.append('file', blob, 'foto');
-  } else {
-    form.append('file', { uri, name: 'foto.jpg', type: mimeType } as unknown as Blob);
+    return api<UploadedFile>('/files', { method: 'POST', form });
   }
-  return api<UploadedFile>('/files', { method: 'POST', form });
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let res: { status: number; body: string };
+  try {
+    res = await new File(uri).upload(`${session.server()}/v1/files`, {
+      httpMethod: 'POST',
+      uploadType: UploadType.MULTIPART,
+      fieldName: 'file',
+      mimeType,
+      parameters: { kind },
+      headers,
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Não consegui enviar a foto. Confira a conexão e tente de novo.');
+  }
+  let json: (UploadedFile & { error?: { code?: string; message?: string } }) | undefined;
+  try {
+    json = res.body ? JSON.parse(res.body) : undefined;
+  } catch {
+    json = undefined;
+  }
+  if (res.status === 401) onUnauthorized?.();
+  if (res.status < 200 || res.status >= 300 || !json) throw new ApiError(res.status, json?.error?.code ?? 'HTTP', json?.error?.message ?? `Erro ${res.status} ao enviar a foto`);
+  return json;
 }

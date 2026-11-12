@@ -1,8 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import type { ComponentProps, ReactNode } from 'react';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { type ComponentProps, type ReactNode, useContext } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -37,26 +40,56 @@ export function Icon({ name, size = 18, color }: { name: IconName; size?: number
 
 export const useWide = () => useWindowDimensions().width >= WIDE;
 
-/** Tela rolável com largura de leitura limitada e margens que respiram. */
+/**
+ * Tela rolável com largura de leitura limitada e margens que respiram.
+ * No celular, sobe o conteúdo quando o teclado abre: com o Android "edge-to-edge" o sistema
+ * não encolhe mais a tela sozinho, e o campo de baixo ficava escondido atrás do teclado.
+ */
 export function Screen({ children, refreshing, onRefresh, scroll = true, tab }: { children: ReactNode; refreshing?: boolean; onRefresh?: () => void; scroll?: boolean; tab?: boolean }) {
   const { c } = useTheme();
   const wide = useWide();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const pad = wide ? space.xxl : space.lg;
   const inner = { width: '100%' as const, maxWidth: CONTENT_MAX, alignSelf: 'center' as const, padding: pad, gap: space.xl, paddingBottom: tab ? space.xxl : space.xxxl * 2 };
   return (
     <SafeAreaView edges={tab ? ['top'] : ['bottom']} style={{ flex: 1, backgroundColor: c.bg }}>
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={inner}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.textMuted} /> : undefined}
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1 }, inner]}>{children}</View>
-      )}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'} keyboardVerticalOffset={tab ? 0 : headerHeight}>
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={inner}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.textMuted} /> : undefined}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[{ flex: 1 }, inner]}>{children}</View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/** Barra de progresso (0–1). */
+export function ProgressBar({ value, color, height = 6, label }: { value: number; color?: string; height?: number; label?: string }) {
+  const { c } = useTheme();
+  const v = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ min: 0, max: 100, now: Math.round(v * 100) }} style={{ height, borderRadius: height, backgroundColor: c.surfaceAlt, overflow: 'hidden' }}>
+      <View style={{ width: `${v * 100}%`, height: '100%', borderRadius: height, backgroundColor: color ?? c.accent }} />
+    </View>
+  );
+}
+
+/** "🔥 12" — sequência de dias; apagada quando zerada. */
+export function Flame({ n, size = 'small', active = true }: { n: number; size?: 'small' | 'large'; active?: boolean }) {
+  const { c } = useTheme();
+  const big = size === 'large';
+  return (
+    <View accessible accessibilityLabel={`${n} ${n === 1 ? 'dia seguido' : 'dias seguidos'}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 2, opacity: n > 0 && active ? 1 : 0.45 }}>
+      <RNText style={{ fontSize: big ? 30 : 15 }}>🔥</RNText>
+      <RNText style={{ fontFamily: font.bold, fontSize: big ? 34 : 15, color: n > 0 && active ? c.warning : c.textMuted, letterSpacing: big ? -1 : 0 }}>{n}</RNText>
+    </View>
   );
 }
 

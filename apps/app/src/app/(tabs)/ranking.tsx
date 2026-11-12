@@ -1,142 +1,147 @@
-import { GOAL_LABELS, TEST_GROUP_LABELS, TEST_GROUPS } from '@forja/shared';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
-import { HowItWorks } from '@/components/competition';
-import { Avatar, Badge, Button, Card, Divider, Empty, ErrorBox, Header, ListItem, Loading, Row, Screen, Section, Segmented, Text } from '@/components/ui';
+import { RANKING_LABELS } from '@forja/shared';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { TabHeader } from '@/components/activity';
+import { Competicoes, Testes } from '@/components/records';
+import { Avatar, Badge, Card, Chip, ChipStrip, Empty, ErrorBox, Flame, Loading, Row, Screen, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { date, num, testValue } from '@/lib/format';
-import { useCompetitions, usePowerlifting, useTests } from '@/lib/queries';
+import { num } from '@/lib/format';
+import { useRankings } from '@/lib/queries';
+import type { RankingBoardId, RankingEntry } from '@/lib/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { font, space } from '@/theme/tokens';
 
-const PHASE = { upcoming: { label: 'Em breve', tone: 'neutral' }, active: { label: 'Valendo', tone: 'accent' }, finished: { label: 'Encerrada', tone: 'neutral' } } as const;
+type Tab = RankingBoardId | 'recordes' | 'competicoes';
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'streak', label: '🔥 Sequência' },
+  { value: 'physical', label: '💪 Atributos físicos' },
+  { value: 'evolution', label: '📈 Evolução' },
+  { value: 'recordes', label: '🏅 Recordes' },
+  { value: 'competicoes', label: '🏆 Competições' },
+];
+const MEDALS = ['🥇', '🥈', '🥉'];
 
-function Competicoes() {
-  const list = useCompetitions();
-  if (list.isLoading) return <Loading />;
-  if (list.error) return <ErrorBox error={list.error} onRetry={() => void list.refetch()} />;
-  const items = list.data ?? [];
+function valueText(board: RankingBoardId, e: RankingEntry): string {
+  if (board === 'streak') return `${e.value} ${e.value === 1 ? 'dia' : 'dias'}`;
+  if (board === 'physical') return `${num(e.value, 1)} pts`;
+  return `${num(e.value, 0)} pts`;
+}
+
+function Podium({ board, list }: { board: RankingBoardId; list: RankingEntry[] }) {
+  const { c } = useTheme();
+  const top = list.filter((e) => e.qualifies).slice(0, 3);
+  if (!top.length) return null;
+  // 2º, 1º, 3º (o primeiro no meio, mais alto)
+  const order = [top[1], top[0], top[2]];
   return (
-    <>
-      {items.length ? (
-        <View style={{ gap: space.md }}>
-          {items.map((c) => (
-            <Card key={c.id} onPress={() => router.push(`/competitions/${c.id}`)} label={c.name}>
-              <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text variant="heading">{c.name}</Text>
-                  <Text variant="small" muted>
-                    {date(c.startDate)} – {date(c.endDate)} · {c.participants} {c.participants === 1 ? 'participante' : 'participantes'}
-                  </Text>
-                </View>
-                <Badge label={PHASE[c.phase].label} tone={PHASE[c.phase].tone} />
-              </Row>
-              <Text variant="small" muted>
-                {c.myGoal ? `Você está competindo: ${GOAL_LABELS[c.myGoal]}` : c.phase === 'finished' ? 'Você não participou' : 'Toque para participar'}
-              </Text>
-            </Card>
-          ))}
-        </View>
-      ) : (
-        <Empty icon="award" title="Nenhuma competição" message="Defina um período (ex.: 12 semanas) e cada um compete com o próprio objetivo." />
+    <Row style={{ alignItems: 'flex-end', justifyContent: 'center' }} gap={space.md}>
+      {order.map((e, i) =>
+        e ? (
+          <Pressable
+            key={e.user.id}
+            onPress={() => router.push(`/people/${e.user.id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`${e.rank}º lugar: ${e.user.name}, ${valueText(board, e)}`}
+            style={{ alignItems: 'center', gap: 4, flex: 1, maxWidth: 130 }}
+          >
+            <Text style={{ fontSize: i === 1 ? 30 : 22 }}>{MEDALS[e.rank - 1] ?? `${e.rank}º`}</Text>
+            <Avatar name={e.user.name} file={e.user.avatar} size={i === 1 ? 64 : 48} />
+            <Text variant="bodyStrong" numberOfLines={1}>
+              {e.user.name.split(' ')[0]}
+            </Text>
+            <Text variant="small" color={c.accent} style={{ fontFamily: font.semibold }}>
+              {valueText(board, e)}
+            </Text>
+            <View style={{ height: i === 1 ? 54 : i === 0 ? 36 : 24, alignSelf: 'stretch', borderTopLeftRadius: 8, borderTopRightRadius: 8, backgroundColor: i === 1 ? c.accentSoft : c.surfaceAlt }} />
+          </Pressable>
+        ) : (
+          <View key={`vazio-${i}`} style={{ flex: 1, maxWidth: 130 }} />
+        ),
       )}
-      <Button title="Nova competição" icon="plus" kind={items.length ? 'secondary' : 'primary'} onPress={() => router.push('/competitions/new')} />
-      <HowItWorks />
-    </>
+    </Row>
   );
 }
 
-function Testes() {
-  const tests = useTests();
-  const pl = usePowerlifting();
+function Board({ board }: { board: RankingBoardId }) {
+  const rankings = useRankings();
   const { me } = useAuth();
   const { c } = useTheme();
-  if (tests.isLoading) return <Loading />;
-  if (tests.error) return <ErrorBox error={tests.error} onRetry={() => void tests.refetch()} />;
+  const [how, setHow] = useState(false);
+  if (rankings.isLoading) return <Loading />;
+  if (rankings.error) return <ErrorBox error={rankings.error} onRetry={() => void rankings.refetch()} />;
+  const list = rankings.data!.boards[board];
+  const label = RANKING_LABELS[board];
+  const mine = list.find((e) => e.user.id === me?.id);
   return (
     <>
-      <Section title="Total powerlifting · DOTS">
-        <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-          {pl.data?.length ? (
-            pl.data.map((e, i) => (
-              <View key={e.user.id}>
-                {i ? <Divider /> : null}
-                <ListItem
-                  left={
-                    <Row gap={space.md}>
-                      <Text variant="bodyStrong" style={{ width: 22 }} color={i === 0 ? c.accent : c.textMuted}>
-                        {e.rank}º
-                      </Text>
-                      <Avatar name={e.user.name} file={e.user.avatar} size={32} />
-                    </Row>
-                  }
-                  title={e.user.id === me?.id ? `${e.user.name} (você)` : e.user.name}
-                  subtitle={`Agach. ${num(e.squat, 0)} · Supino ${num(e.bench, 0)} · Terra ${num(e.deadlift, 0)} = ${num(e.total, 0)} kg`}
-                  right={
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontFamily: font.semibold }}>{e.dots != null ? num(e.dots, 1) : '—'}</Text>
-                      <Text variant="small" faint>
-                        DOTS
-                      </Text>
-                    </View>
-                  }
-                  onPress={() => router.push(e.user.id === me?.id ? '/perfil' : `/people/${e.user.id}`)}
-                />
+      <Card>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Text variant="heading">{label.title}</Text>
+          <Text variant="small" color={c.accent} onPress={() => setHow(!how)} accessibilityRole="button">
+            {how ? 'Fechar' : 'Como funciona?'}
+          </Text>
+        </Row>
+        {how ? <Text variant="small" muted>{label.how}</Text> : null}
+        {mine ? (
+          <Text variant="small" muted>
+            {mine.qualifies ? `Você: ${mine.rank}º lugar com ${valueText(board, mine)}.` : `Você ainda não pontua aqui. ${mine.detail}`}
+          </Text>
+        ) : null}
+      </Card>
+      <Podium board={board} list={list} />
+      <Card padded={false} style={{ paddingHorizontal: space.lg, paddingVertical: space.sm }}>
+        {list.map((e) => {
+          const isMe = e.user.id === me?.id;
+          return (
+            <Pressable
+              key={e.user.id}
+              onPress={() => router.push(isMe ? '/perfil' : `/people/${e.user.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`${e.qualifies ? `${e.rank}º` : 'Sem pontos'}: ${e.user.name}, ${valueText(board, e)}. ${e.detail}`}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: 10, opacity: pressed ? 0.7 : e.qualifies ? 1 : 0.55 })}
+            >
+              <Text variant="bodyStrong" style={{ width: 30 }} color={e.qualifies && e.rank === 1 ? c.accent : c.textMuted}>
+                {e.qualifies ? `${e.rank}º` : '—'}
+              </Text>
+              <Avatar name={e.user.name} file={e.user.avatar} size={36} online={e.user.online} />
+              <View style={{ flex: 1, gap: 1 }}>
+                <Row gap={space.sm}>
+                  <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {isMe ? `${e.user.name} (você)` : e.user.name}
+                  </Text>
+                  {rankings.data!.leaders[board] === e.user.id ? <Badge label="Líder" tone="accent" /> : null}
+                </Row>
+                <Text variant="small" faint numberOfLines={2}>
+                  {e.detail}
+                </Text>
               </View>
-            ))
-          ) : (
-            <Text muted style={{ paddingVertical: space.lg }}>
-              Registre agachamento, supino e terra para entrar no total.
-            </Text>
-          )}
-        </Card>
-        <Text variant="small" faint>
-          DOTS compara força entre pesos corporais diferentes (precisa de sexo no perfil e peso registrado).
-        </Text>
-      </Section>
-      {TEST_GROUPS.map((g) => {
-        const items = (tests.data ?? []).filter((t) => t.test.group === g);
-        return (
-          <Section key={g} title={TEST_GROUP_LABELS[g]}>
-            <Card padded={false} style={{ paddingHorizontal: space.lg }}>
-              {items.map((t, i) => (
-                <View key={t.test.id}>
-                  {i ? <Divider /> : null}
-                  <ListItem
-                    title={t.test.name}
-                    subtitle={
-                      t.leader
-                        ? `1º ${t.leader.user.name}: ${testValue(t.test.id, t.leader.value)}${t.leader.dots != null ? ` (${num(t.leader.dots, 0)} DOTS)` : ''}`
-                        : 'Ninguém registrou ainda'
-                    }
-                    right={t.myRank ? <Badge label={`Você: ${t.myRank}º`} tone={t.myRank === 1 ? 'accent' : 'neutral'} /> : undefined}
-                    onPress={() => router.push(`/tests/${t.test.id}`)}
-                  />
-                </View>
-              ))}
-            </Card>
-          </Section>
-        );
-      })}
+              {board === 'streak' ? <Flame n={e.value} /> : <Text style={{ fontFamily: font.semibold }}>{e.qualifies ? valueText(board, e) : '—'}</Text>}
+            </Pressable>
+          );
+        })}
+        {!list.length ? <Empty icon="users" title="Ninguém no grupo ainda" /> : null}
+      </Card>
     </>
   );
 }
 
 export default function Ranking() {
-  const [tab, setTab] = useState<'comp' | 'tests'>('comp');
+  const params = useLocalSearchParams<{ board?: string }>();
+  const [tab, setTab] = useState<Tab>('streak');
+  useEffect(() => {
+    if (params.board && TABS.some((t) => t.value === params.board)) setTab(params.board as Tab);
+  }, [params.board]);
+  const rankings = useRankings();
   return (
-    <Screen tab>
-      <Header title="Ranking" />
-      <Segmented
-        options={[
-          { value: 'comp', label: 'Competição' },
-          { value: 'tests', label: 'Recordes' },
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
-      {tab === 'comp' ? <Competicoes /> : <Testes />}
+    <Screen tab refreshing={rankings.isRefetching} onRefresh={() => void rankings.refetch()}>
+      <TabHeader title="Ranking" subtitle="Quem treina todo dia, quem tem o melhor físico e quem mais evolui" />
+      <ChipStrip>
+        {TABS.map((t) => (
+          <Chip key={t.value} label={t.label} selected={tab === t.value} onPress={() => setTab(t.value)} />
+        ))}
+      </ChipStrip>
+      {tab === 'recordes' ? <Testes /> : tab === 'competicoes' ? <Competicoes /> : <Board board={tab} />}
     </Screen>
   );
 }
